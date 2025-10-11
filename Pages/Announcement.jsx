@@ -55,7 +55,10 @@ const Announcement = () => {
                     </span>
                     <span className="flex items-center space-x-1">
                       <Clock className="w-4 h-4" />
-                      <span>{announcement.date}</span>
+                      <span>
+                        {announcement.date}
+                        {announcement.time && ` at ${announcement.time}`}
+                      </span>
                     </span>
                   </div>
                 </div>

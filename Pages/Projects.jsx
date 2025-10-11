@@ -1,100 +1,221 @@
-import React from "react";
-import { FolderOpen } from "lucide-react";
+import React, { useState } from "react";
+import { FolderOpen, Calendar, Award } from "lucide-react";
 import useManageStore from "../src/Store/useManageStore";
 
-
 const Projects = () => {
-  const { projects, addProject } = useManageStore();
+  const [filter, setFilter] = useState("all");
+
+  // Get projects from store using selector pattern
+  const projects = useManageStore((state) => state.projects);
+
+  // Hardcoded student ID - matches the ID used in Administrator
+  const currentStudentId = 1;
+
+  // Filter projects for current student
+  const studentProjects = projects.filter(
+    (p) => p.studentId === currentStudentId
+  );
+
+  const filteredProjects =
+    filter === "all"
+      ? studentProjects
+      : studentProjects.filter((p) => p.status === filter);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 bg-gray-900 min-h-screen p-6">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-white text-3xl font-bold">Projects</h1>
           <p className="text-gray-400 mt-2">
-            Your weekly and monthly project submissions
+            View your weekly and monthly project submissions
           </p>
         </div>
+      </div>
+
+      <div className="flex items-center space-x-4 flex-wrap gap-2">
         <button
-          onClick={() => {
-            // For demonstration
-            addProject({
-              id: Date.now(),
-              title: "New Project",
-              week: 1,
-              status: "in-progress",
-              technologies: [],
-            });
-          }}
-          className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-6 py-2 rounded-lg font-semibold transition-colors"
+          onClick={() => setFilter("all")}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            filter === "all"
+              ? "bg-yellow-500 text-gray-900"
+              : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+          }`}
+          aria-label="Filter all projects"
         >
-          Submit New Project
+          All ({studentProjects.length})
+        </button>
+        <button
+          onClick={() => setFilter("pending")}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            filter === "pending"
+              ? "bg-yellow-500 text-gray-900"
+              : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+          }`}
+          aria-label="Filter pending projects"
+        >
+          Pending (
+          {studentProjects.filter((p) => p.status === "pending").length})
+        </button>
+        <button
+          onClick={() => setFilter("in-progress")}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            filter === "in-progress"
+              ? "bg-yellow-500 text-gray-900"
+              : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+          }`}
+          aria-label="Filter in-progress projects"
+        >
+          In Progress (
+          {studentProjects.filter((p) => p.status === "in-progress").length})
+        </button>
+        <button
+          onClick={() => setFilter("submitted")}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            filter === "submitted"
+              ? "bg-yellow-500 text-gray-900"
+              : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+          }`}
+          aria-label="Filter submitted projects"
+        >
+          Submitted (
+          {studentProjects.filter((p) => p.status === "submitted").length})
+        </button>
+        <button
+          onClick={() => setFilter("graded")}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            filter === "graded"
+              ? "bg-yellow-500 text-gray-900"
+              : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+          }`}
+          aria-label="Filter graded projects"
+        >
+          Graded ({studentProjects.filter((p) => p.status === "graded").length})
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {projects.map((project) => (
-          <div
-            key={project.id}
-            className="bg-gray-800 rounded-lg p-6 border border-gray-700"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-white text-xl font-semibold mb-2">
-                  {project.title}
-                </h3>
-                <span className="inline-block bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold">
-                  Week {project.week}
-                </span>
-              </div>
-              <FolderOpen className="w-6 h-6 text-yellow-500" />
-            </div>
+      <div className="space-y-4">
+        {filteredProjects.length === 0 ? (
+          <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+            <p className="text-gray-400 text-lg">
+              {filter === "all" ? "No projects yet" : `No ${filter} projects`}
+            </p>
+          </div>
+        ) : (
+          filteredProjects.map((project) => (
+            <div
+              key={project.id}
+              className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-gray-600 transition-colors"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <FolderOpen className="w-5 h-5 text-yellow-500" />
+                    <h3 className="text-white text-lg font-semibold">
+                      {project.title}
+                    </h3>
+                  </div>
+                  {project.description && (
+                    <p className="text-gray-400 text-sm mb-3">
+                      {project.description}
+                    </p>
+                  )}
+                  <div className="flex items-center space-x-4 text-sm flex-wrap mb-3">
+                    <span className="inline-block bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold">
+                      Week {project.week}
+                    </span>
+                    {project.dueDate && (
+                      <span className="flex items-center space-x-1 text-gray-400">
+                        <Calendar className="w-4 h-4" />
+                        <span>Due: {project.dueDate}</span>
+                      </span>
+                    )}
+                    <span className="flex items-center space-x-1 text-gray-400">
+                      <Award className="w-4 h-4" />
+                      <span>{project.maxGrade} points</span>
+                    </span>
+                  </div>
 
-            <div className="flex flex-wrap gap-2 mb-4">
-              {project.technologies.map((tech, index) => (
-                <span
-                  key={index}
-                  className="bg-gray-900 text-gray-300 px-2 py-1 rounded text-xs"
-                >
-                  {tech}
-                </span>
-              ))}
-            </div>
+                  {project.createdDate && project.createdTime && (
+                    <p className="text-gray-500 text-xs mb-3">
+                      Created: {project.createdDate} at {project.createdTime}
+                    </p>
+                  )}
 
-            {project.status === "completed" ? (
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-400 text-sm">Grade</span>
-                  <span className="text-white font-semibold">
-                    {project.grade}/{project.maxGrade}
+                  {project.technologies && project.technologies.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {project.technologies.map((tech, index) => (
+                        <span
+                          key={index}
+                          className="bg-gray-900 text-gray-300 px-2 py-1 rounded text-xs"
+                        >
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {project.status === "graded" && (
+                    <div className="mt-4 bg-gray-900 rounded-lg p-4 border border-gray-700">
+                      <p className="text-green-400 text-lg font-semibold">
+                        Grade: {project.grade}/{project.maxGrade}
+                      </p>
+                      <p className="text-gray-400 text-sm mt-1">
+                        Percentage:{" "}
+                        {((project.grade / project.maxGrade) * 100).toFixed(1)}%
+                      </p>
+                      <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
+                        <div
+                          className="bg-yellow-500 h-2 rounded-full"
+                          style={{
+                            width: `${
+                              (project.grade / project.maxGrade) * 100
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {project.status === "submitted" && (
+                    <div className="mt-4 bg-gray-900 rounded-lg p-4 border border-gray-700">
+                      <p className="text-blue-400 text-sm">
+                        Your project has been submitted and is awaiting grading.
+                      </p>
+                    </div>
+                  )}
+                  {project.status === "in-progress" && (
+                    <div className="mt-4 bg-gray-900 rounded-lg p-4 border border-blue-700">
+                      <p className="text-blue-400 text-sm">
+                        This project is in progress. Keep working on it!
+                      </p>
+                    </div>
+                  )}
+                  {project.status === "pending" && (
+                    <div className="mt-4 bg-gray-900 rounded-lg p-4 border border-yellow-700">
+                      <p className="text-yellow-400 text-sm">
+                        This project is pending. Please start working on it
+                        before the due date.
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center space-x-3">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      project.status === "graded"
+                        ? "bg-green-500 text-white"
+                        : project.status === "submitted"
+                        ? "bg-blue-500 text-white"
+                        : project.status === "in-progress"
+                        ? "bg-purple-500 text-white"
+                        : "bg-yellow-500 text-gray-900"
+                    }`}
+                  >
+                    {project.status.toUpperCase().replace("-", " ")}
                   </span>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-yellow-500 h-2 rounded-full"
-                    style={{
-                      width: `${(project.grade / project.maxGrade) * 100}%`,
-                    }}
-                  />
-                </div>
               </div>
-            ) : null}
-
-            <span
-              className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                project.status === "completed"
-                  ? "bg-green-500 text-white"
-                  : "bg-blue-500 text-white"
-              }`}
-            >
-              {project.status.toUpperCase()}
-            </span>
-          </div>
-        ))}
-        {projects.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-400">No projects available.</p>
-          </div>
+            </div>
+          ))
         )}
       </div>
     </div>

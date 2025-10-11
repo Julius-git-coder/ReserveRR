@@ -9,6 +9,7 @@ import {
   Trash2,
   Settings,
   X,
+  Dumbbell,
 } from "lucide-react";
 import useManageStore from "../Store/useManageStore";
 
@@ -35,12 +36,17 @@ const Administrator = () => {
   const addAssignment = useManageStore((state) => state.addAssignment);
   const updateAssignment = useManageStore((state) => state.updateAssignment);
   const deleteAssignment = useManageStore((state) => state.deleteAssignment);
+  const exercises = useManageStore((state) => state.exercises);
+  const addExercise = useManageStore((state) => state.addExercise);
+  const updateExercise = useManageStore((state) => state.updateExercise);
+  const deleteExercise = useManageStore((state) => state.deleteExercise);
 
   // Debug log
   useEffect(() => {
     console.log("Administrator - Announcements:", announcements);
     console.log("Administrator - Assignments:", assignments);
-  }, [announcements, assignments]);
+    console.log("Administrator - Exercises:", exercises);
+  }, [announcements, assignments, exercises]);
 
   const [recentStudents] = useState([
     {
@@ -58,17 +64,30 @@ const Administrator = () => {
     { label: "Active Courses", value: "8", icon: BookOpen, color: "blue" },
   ];
 
-  const pendingActions = assignments
-    .filter((assignment) => assignment.status === "submitted")
-    .map((assignment) => ({
-      id: assignment.id,
-      type: "Assignment Review",
-      student:
-        recentStudents.find((s) => s.id === assignment.studentId)?.name ||
-        "Unknown",
-      description: assignment.title,
-      priority: "medium",
-    }));
+  const pendingActions = [
+    ...assignments
+      .filter((assignment) => assignment.status === "submitted")
+      .map((assignment) => ({
+        id: `assignment-${assignment.id}`,
+        type: "Assignment Review",
+        student:
+          recentStudents.find((s) => s.id === assignment.studentId)?.name ||
+          "Unknown",
+        description: assignment.title,
+        priority: "medium",
+      })),
+    ...exercises
+      .filter((exercise) => exercise.status === "submitted")
+      .map((exercise) => ({
+        id: `exercise-${exercise.id}`,
+        type: "Exercise Review",
+        student:
+          recentStudents.find((s) => s.id === exercise.studentId)?.name ||
+          "Unknown",
+        description: exercise.title,
+        priority: "medium",
+      })),
+  ];
 
   const StatIcon = ({ icon: IconComponent, color }) => (
     <IconComponent
@@ -105,11 +124,10 @@ const Administrator = () => {
           title: formData.title,
           content: formData.content,
           date: now.toISOString().split("T")[0],
-          time: now.toTimeString().split(" ")[0].slice(0, 5), // HH:MM format
+          time: now.toTimeString().split(" ")[0].slice(0, 5),
           priority: formData.priority || "medium",
           author: formData.author || "Admin Team",
         };
-        console.log("Adding announcement:", newAnnouncement);
         addAnnouncement(newAnnouncement);
         alert("Announcement added successfully!");
         break;
@@ -125,8 +143,8 @@ const Administrator = () => {
           content: formData.content,
           priority: formData.priority || "medium",
           author: formData.author || "Admin Team",
-          date: announcement.date, // Keep original date
-          time: announcement.time, // Keep original time
+          date: announcement.date,
+          time: announcement.time,
         });
         alert("Announcement updated successfully!");
         break;
@@ -156,9 +174,8 @@ const Administrator = () => {
           studentId: parseInt(formData.studentId),
           status: "pending",
           createdDate: now.toISOString().split("T")[0],
-          createdTime: now.toTimeString().split(" ")[0].slice(0, 5), // HH:MM format
+          createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
         };
-        console.log("Adding assignment:", newAssignment);
         addAssignment(newAssignment);
         alert("Assignment added successfully! Student will see it now.");
         break;
@@ -186,6 +203,50 @@ const Administrator = () => {
           studentId: parseInt(formData.studentId),
         });
         alert("Assignment updated successfully!");
+        break;
+      }
+      case "exercise": {
+        if (!formData.title || !formData.points || !formData.studentId) {
+          alert("Please fill in all required fields.");
+          return;
+        }
+        const points = parseInt(formData.points);
+        if (isNaN(points) || points <= 0) {
+          alert("Please enter a valid number of points.");
+          return;
+        }
+        const now = new Date();
+        const newExercise = {
+          id: newId(exercises),
+          title: formData.title,
+          description: formData.description || "",
+          points,
+          studentId: parseInt(formData.studentId),
+          status: "pending",
+          createdDate: now.toISOString().split("T")[0],
+          createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
+        };
+        addExercise(newExercise);
+        alert("Exercise added successfully! Student will see it now.");
+        break;
+      }
+      case "exercise-edit": {
+        if (!formData.title || !formData.points || !formData.studentId) {
+          alert("Please fill in all required fields.");
+          return;
+        }
+        const points = parseInt(formData.points);
+        if (isNaN(points) || points <= 0) {
+          alert("Please enter a valid number of points.");
+          return;
+        }
+        updateExercise(formData.id, {
+          title: formData.title,
+          description: formData.description || "",
+          points,
+          studentId: parseInt(formData.studentId),
+        });
+        alert("Exercise updated successfully!");
         break;
       }
       case "event": {
@@ -239,13 +300,18 @@ const Administrator = () => {
     setSelectedForm("announcement-edit");
   };
 
-  const handleGradeChange = (assignmentId, value) => {
-    setFormData((prev) => ({ ...prev, [assignmentId]: value }));
+  const handleGradeChange = (id, value) => {
+    setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleMarkSubmitted = (assignmentId) => {
-    updateAssignment(assignmentId, { status: "submitted" });
-    alert("Assignment marked as submitted!");
+  const handleMarkSubmitted = (id, type) => {
+    if (type === "assignment") {
+      updateAssignment(id, { status: "submitted" });
+      alert("Assignment marked as submitted!");
+    } else if (type === "exercise") {
+      updateExercise(id, { status: "submitted" });
+      alert("Exercise marked as submitted!");
+    }
   };
 
   const handleEditAssignment = (assignment) => {
@@ -260,6 +326,17 @@ const Administrator = () => {
     setSelectedForm("assignment-edit");
   };
 
+  const handleEditExercise = (exercise) => {
+    setFormData({
+      id: exercise.id,
+      title: exercise.title,
+      description: exercise.description,
+      points: exercise.points,
+      studentId: exercise.studentId,
+    });
+    setSelectedForm("exercise-edit");
+  };
+
   const handleDeleteAssignment = (assignmentId) => {
     if (window.confirm("Are you sure you want to delete this assignment?")) {
       deleteAssignment(assignmentId);
@@ -267,15 +344,32 @@ const Administrator = () => {
     }
   };
 
-  const handleGradeSubmit = (assignmentId) => {
-    const grade = parseFloat(formData[assignmentId]);
-    const assignment = assignments.find((a) => a.id === assignmentId);
-    if (isNaN(grade) || grade < 0 || grade > assignment.points) {
+  const handleDeleteExercise = (exerciseId) => {
+    if (window.confirm("Are you sure you want to delete this exercise?")) {
+      deleteExercise(exerciseId);
+      alert("Exercise deleted successfully!");
+    }
+  };
+
+  const handleGradeSubmit = (id, type) => {
+    const grade = parseFloat(formData[id]);
+    const item =
+      type === "assignment"
+        ? assignments.find((a) => a.id === id)
+        : exercises.find((e) => e.id === id);
+
+    if (isNaN(grade) || grade < 0 || grade > item.points) {
       alert("Please enter a valid grade between 0 and the maximum points.");
       return;
     }
-    updateAssignment(assignmentId, { status: "graded", grade });
-    setFormData((prev) => ({ ...prev, [assignmentId]: "" }));
+
+    if (type === "assignment") {
+      updateAssignment(id, { status: "graded", grade });
+    } else if (type === "exercise") {
+      updateExercise(id, { status: "graded", grade });
+    }
+
+    setFormData((prev) => ({ ...prev, [id]: "" }));
     alert("Grade submitted successfully!");
   };
 
@@ -290,6 +384,18 @@ const Administrator = () => {
               .includes(searchTerm.toLowerCase())
         )
       : assignments;
+
+  const filteredExercises =
+    activeTab === "exercises"
+      ? exercises.filter(
+          (e) =>
+            e.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            recentStudents
+              .find((s) => s.id === e.studentId)
+              ?.name.toLowerCase()
+              .includes(searchTerm.toLowerCase())
+        )
+      : exercises;
 
   const renderForm = () => {
     switch (selectedForm) {
@@ -417,6 +523,65 @@ const Administrator = () => {
             </div>
           </div>
         );
+      case "exercise":
+      case "exercise-edit":
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Title *
+              </label>
+              <input
+                type="text"
+                value={formData.title || ""}
+                onChange={(e) => handleFormChange("title", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Description
+              </label>
+              <textarea
+                value={formData.description || ""}
+                onChange={(e) =>
+                  handleFormChange("description", e.target.value)
+                }
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                rows="4"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Points *
+              </label>
+              <input
+                type="number"
+                value={formData.points || ""}
+                onChange={(e) => handleFormChange("points", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Student ID * (Enter 1 for Julius Dagana)
+              </label>
+              <input
+                type="number"
+                value={formData.studentId || ""}
+                onChange={(e) => handleFormChange("studentId", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                placeholder="1"
+                required
+              />
+              <p className="text-gray-500 text-xs mt-1">
+                Current student: Julius Dagana (ID: 1)
+              </p>
+            </div>
+          </div>
+        );
       case "event":
         return (
           <div className="space-y-4">
@@ -468,7 +633,7 @@ const Administrator = () => {
             Administrator Dashboard
           </h1>
           <p className="text-gray-400 mt-2">
-            Manage students, assignments, and system settings
+            Manage students, assignments, exercises, and system settings
           </p>
         </div>
         <div className="flex items-center space-x-3 flex-wrap gap-2">
@@ -487,6 +652,7 @@ const Administrator = () => {
             <option value="">Select Content Type</option>
             <option value="announcement">New Announcement</option>
             <option value="assignment">New Assignment</option>
+            <option value="exercise">New Exercise</option>
             <option value="event">New Event</option>
           </select>
           <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2">
@@ -506,6 +672,8 @@ const Administrator = () => {
                 {selectedForm === "announcement-edit" && "Edit Announcement"}
                 {selectedForm === "assignment" && "New Assignment"}
                 {selectedForm === "assignment-edit" && "Edit Assignment"}
+                {selectedForm === "exercise" && "New Exercise"}
+                {selectedForm === "exercise-edit" && "Edit Exercise"}
                 {selectedForm === "event" &&
                   (formData.id ? "Edit Event" : "New Event")}
               </h2>
@@ -593,6 +761,16 @@ const Administrator = () => {
             }`}
           >
             Assignments
+          </button>
+          <button
+            onClick={() => setActiveTab("exercises")}
+            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+              activeTab === "exercises"
+                ? "bg-yellow-500 text-gray-900"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            Exercises
           </button>
         </div>
       </div>
@@ -809,7 +987,9 @@ const Administrator = () => {
                       {assignment.status === "pending" && (
                         <div className="mt-4 flex items-center space-x-3">
                           <button
-                            onClick={() => handleMarkSubmitted(assignment.id)}
+                            onClick={() =>
+                              handleMarkSubmitted(assignment.id, "assignment")
+                            }
                             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
                           >
                             Mark as Submitted
@@ -828,7 +1008,9 @@ const Administrator = () => {
                             placeholder="Grade"
                           />
                           <button
-                            onClick={() => handleGradeSubmit(assignment.id)}
+                            onClick={() =>
+                              handleGradeSubmit(assignment.id, "assignment")
+                            }
                             className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
                           >
                             Submit Grade
@@ -871,7 +1053,140 @@ const Administrator = () => {
                       </button>
                     </div>
                   </div>
-                  
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Exercises Tab */}
+      {activeTab === "exercises" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
+              <Dumbbell className="w-5 h-5 text-yellow-500" />
+              <span>All Exercises</span>
+            </h3>
+            <button
+              onClick={() => {
+                setSelectedForm("exercise");
+                setFormData({});
+              }}
+              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+            >
+              New Exercise
+            </button>
+          </div>
+          {filteredExercises.length === 0 ? (
+            <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+              <p className="text-gray-400 text-lg">No exercises yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredExercises.map((exercise) => (
+                <div
+                  key={exercise.id}
+                  className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h4 className="text-white font-semibold text-lg mb-2">
+                        {exercise.title}
+                      </h4>
+                      {exercise.description && (
+                        <p className="text-gray-400 text-sm mb-3">
+                          {exercise.description}
+                        </p>
+                      )}
+                      <div className="flex items-center space-x-4 text-sm">
+                        <span className="text-gray-400">
+                          {exercise.points} points
+                        </span>
+                        <span className="text-gray-400">
+                          Student:{" "}
+                          {
+                            recentStudents.find(
+                              (s) => s.id === exercise.studentId
+                            )?.name
+                          }
+                        </span>
+                      </div>
+                      {exercise.createdDate && exercise.createdTime && (
+                        <p className="text-gray-500 text-xs mt-2">
+                          Created: {exercise.createdDate} at{" "}
+                          {exercise.createdTime}
+                        </p>
+                      )}
+                      {exercise.status === "pending" && (
+                        <div className="mt-4 flex items-center space-x-3">
+                          <button
+                            onClick={() =>
+                              handleMarkSubmitted(exercise.id, "exercise")
+                            }
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
+                          >
+                            Mark as Submitted
+                          </button>
+                        </div>
+                      )}
+                      {exercise.status === "submitted" && (
+                        <div className="mt-4 flex items-center space-x-3">
+                          <input
+                            type="number"
+                            value={formData[exercise.id] || ""}
+                            onChange={(e) =>
+                              handleGradeChange(exercise.id, e.target.value)
+                            }
+                            className="w-24 bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                            placeholder="Grade"
+                          />
+                          <button
+                            onClick={() =>
+                              handleGradeSubmit(exercise.id, "exercise")
+                            }
+                            className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+                          >
+                            Submit Grade
+                          </button>
+                        </div>
+                      )}
+                      {exercise.status === "graded" && (
+                        <div className="mt-3">
+                          <p className="text-green-400 text-sm font-semibold">
+                            Graded: {exercise.grade}/{exercise.points}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          exercise.status === "graded"
+                            ? "bg-green-500 text-white"
+                            : exercise.status === "submitted"
+                            ? "bg-blue-500 text-white"
+                            : "bg-yellow-500 text-gray-900"
+                        }`}
+                      >
+                        {exercise.status.toUpperCase()}
+                      </span>
+                      <button
+                        onClick={() => handleEditExercise(exercise)}
+                        className="text-yellow-500 hover:text-yellow-400"
+                        title="Edit Exercise"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteExercise(exercise.id)}
+                        className="text-red-500 hover:text-red-400"
+                        title="Delete Exercise"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

@@ -1,3 +1,5 @@
+
+
 // import { create } from "zustand";
 // import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -184,7 +186,6 @@ const useManageStore = create(
           console.log("Store: New announcements array:", newAnnouncements);
           return { announcements: newAnnouncements };
         });
-        // Log after state update
         setTimeout(() => {
           console.log("Store: Current state after add:", get().announcements);
         }, 0);
@@ -291,6 +292,16 @@ const useManageStore = create(
       addExercise: (exercise) =>
         set((state) => ({
           exercises: [exercise, ...state.exercises],
+        })),
+      updateExercise: (id, updatedExercise) =>
+        set((state) => ({
+          exercises: state.exercises.map((e) =>
+            e.id === id ? { ...e, ...updatedExercise } : e
+          ),
+        })),
+      deleteExercise: (id) =>
+        set((state) => ({
+          exercises: state.exercises.filter((e) => e.id !== id),
         })),
 
       // State for Directory
