@@ -2,21 +2,21 @@ import React from "react";
 import { UserCheck, Calendar, TrendingUp } from "lucide-react";
 import useManageStore from "../src/Store/useManageStore";
 
-
 const Attendance = () => {
-  const attendanceData = [
-    { date: "2025-10-03", status: "present", topic: "REST API Design" },
-    { date: "2025-10-02", status: "present", topic: "Express.js Routing" },
-    { date: "2025-10-01", status: "present", topic: "Postman Basics" },
-    { date: "2025-09-30", status: "absent", topic: "HTTP Methods" },
-    { date: "2025-09-29", status: "present", topic: "Node.js Fundamentals" },
-  ]; // Note: This could be moved to store if needed, but kept as is per original
+  const attendance = useManageStore((state) => state.attendance);
+  const currentStudentId = 1; // Hardcoded to match Administrator
 
-  const presentCount = attendanceData.filter(
+  // Filter attendance records for the current student
+  const studentAttendance = attendance.filter(
+    (record) => record.studentId === currentStudentId
+  );
+
+  const presentCount = studentAttendance.filter(
     (d) => d.status === "present"
   ).length;
-  const totalClasses = attendanceData.length;
-  const percentage = ((presentCount / totalClasses) * 100).toFixed(1);
+  const totalClasses = studentAttendance.length;
+  const percentage =
+    totalClasses > 0 ? ((presentCount / totalClasses) * 100).toFixed(1) : 0;
 
   return (
     <div className="space-y-6">
@@ -61,7 +61,7 @@ const Attendance = () => {
           Attendance History
         </h3>
         <div className="space-y-3">
-          {attendanceData.map((record, index) => (
+          {studentAttendance.map((record, index) => (
             <div
               key={index}
               className="flex items-center justify-between p-4 bg-gray-900 rounded-lg"

@@ -91,6 +91,16 @@
 //         set((state) => ({
 //           projects: [project, ...state.projects],
 //         })),
+//       updateProject: (id, updatedProject) =>
+//         set((state) => ({
+//           projects: state.projects.map((p) =>
+//             p.id === id ? { ...p, ...updatedProject } : p
+//           ),
+//         })),
+//       deleteProject: (id) =>
+//         set((state) => ({
+//           projects: state.projects.filter((p) => p.id !== id),
+//         })),
 
 //       // State for Profile Updates
 //       profile: {
@@ -173,13 +183,15 @@
 //         })),
 //     }),
 //     {
-//       name: "manage-store", // unique name for localStorage
+//       name: "manage-store",
 //       storage: createJSONStorage(() => localStorage),
 //     }
 //   )
 // );
 
 // export default useManageStore;
+
+
 
 
 import { create } from "zustand";
@@ -362,6 +374,59 @@ const useManageStore = create(
       addSession: (session) =>
         set((state) => ({
           sessions: [session, ...state.sessions],
+        })),
+
+      // State for Attendance
+      attendance: [
+        {
+          id: 1,
+          date: "2025-10-03",
+          status: "present",
+          topic: "REST API Design",
+          studentId: 1,
+        },
+        {
+          id: 2,
+          date: "2025-10-02",
+          status: "present",
+          topic: "Express.js Routing",
+          studentId: 1,
+        },
+        {
+          id: 3,
+          date: "2025-10-01",
+          status: "present",
+          topic: "Postman Basics",
+          studentId: 1,
+        },
+        {
+          id: 4,
+          date: "2025-09-30",
+          status: "absent",
+          topic: "HTTP Methods",
+          studentId: 1,
+        },
+        {
+          id: 5,
+          date: "2025-09-29",
+          status: "present",
+          topic: "Node.js Fundamentals",
+          studentId: 1,
+        },
+      ],
+      addAttendance: (attendance) =>
+        set((state) => ({
+          attendance: [attendance, ...state.attendance],
+        })),
+      updateAttendance: (id, updatedAttendance) =>
+        set((state) => ({
+          attendance: state.attendance.map((a) =>
+            a.id === id ? { ...a, ...updatedAttendance } : a
+          ),
+        })),
+      deleteAttendance: (id) =>
+        set((state) => ({
+          attendance: state.attendance.filter((a) => a.id !== id),
         })),
     }),
     {
