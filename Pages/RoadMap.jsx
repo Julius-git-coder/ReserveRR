@@ -1,6 +1,4 @@
-
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Map,
   CheckCircle,
@@ -14,6 +12,17 @@ import useManageStore from "../src/Store/useManageStore";
 const RoadMap = () => {
   const roadmapItems = useManageStore((state) => state.roadmapItems);
   const [expandedWeeks, setExpandedWeeks] = useState({});
+
+  // Debug: Log roadmap items whenever they change
+  useEffect(() => {
+    console.log("RoadMap: Current roadmapItems:", roadmapItems);
+    roadmapItems.forEach((item) => {
+      console.log(`RoadMap: Item ${item.id} weeks:`, item.weeks);
+      item.weeks?.forEach((week, idx) => {
+        console.log(`RoadMap: Week ${idx} sub-topics:`, week.subTopics);
+      });
+    });
+  }, [roadmapItems]);
 
   const toggleWeek = (roadmapId, weekIndex) => {
     const key = `${roadmapId}-${weekIndex}`;
@@ -35,6 +44,11 @@ const RoadMap = () => {
     acc[item.term].push(item);
     return acc;
   }, {});
+
+  // Helper function to safely get sub-topics
+  const getSubTopics = (week) => {
+    return week.subTopics || [];
+  };
 
   return (
     <div className="space-y-6 bg-gray-900 min-h-screen p-6">
@@ -65,9 +79,9 @@ const RoadMap = () => {
                 <p className="text-gray-300 text-sm font-semibold mb-2">
                   Sub-topics:
                 </p>
-                {week.subTopics && week.subTopics.length > 0 ? (
+                {getSubTopics(week).length > 0 ? (
                   <ul className="space-y-2">
-                    {week.subTopics.map((subTopic) => (
+                    {getSubTopics(week).map((subTopic) => (
                       <li
                         key={subTopic.id}
                         className="flex items-center space-x-2 text-gray-300"
@@ -117,9 +131,9 @@ const RoadMap = () => {
                 <p className="text-gray-300 text-sm font-semibold mb-2">
                   Upcoming sub-topics:
                 </p>
-                {week.subTopics && week.subTopics.length > 0 ? (
+                {getSubTopics(week).length > 0 ? (
                   <ul className="space-y-2">
-                    {week.subTopics.map((subTopic) => (
+                    {getSubTopics(week).map((subTopic) => (
                       <li
                         key={subTopic.id}
                         className="flex items-center space-x-2 text-gray-400"
@@ -181,9 +195,8 @@ const RoadMap = () => {
                           className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-800 transition-colors"
                         >
                           <div className="flex items-center space-x-4">
-                            {week.subTopics &&
-                            week.subTopics.length > 0 &&
-                            week.subTopics.every((st) => st.completed) ? (
+                            {getSubTopics(week).length > 0 &&
+                            getSubTopics(week).every((st) => st.completed) ? (
                               <CheckCircle className="w-5 h-5 text-green-500" />
                             ) : week.current ? (
                               <Clock className="w-5 h-5 text-yellow-500" />
@@ -212,9 +225,9 @@ const RoadMap = () => {
                               <p className="text-gray-300 text-sm font-semibold mb-2">
                                 Sub-topics:
                               </p>
-                              {week.subTopics && week.subTopics.length > 0 ? (
+                              {getSubTopics(week).length > 0 ? (
                                 <ul className="space-y-2 pl-9">
-                                  {week.subTopics.map((subTopic) => (
+                                  {getSubTopics(week).map((subTopic) => (
                                     <li
                                       key={subTopic.id}
                                       className="flex items-center space-x-2"

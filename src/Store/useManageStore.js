@@ -1,3 +1,6 @@
+
+
+
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -69,18 +72,36 @@ const useManageStore = create(
           workReadyResources: [resource, ...state.workReadyResources],
         })),
 
-      // State for Roadmap Items - ENHANCED
+      // State for Roadmap Items - ENHANCED WITH BETTER LOGGING
       roadmapItems: [],
-      addRoadmapItem: (item) =>
-        set((state) => ({
-          roadmapItems: [item, ...state.roadmapItems],
-        })),
-      updateRoadmapItem: (id, updates) =>
+      addRoadmapItem: (item) => {
+        console.log("🔷 Store: Adding roadmap item", item);
+        set((state) => {
+          const newItems = [item, ...state.roadmapItems];
+          console.log("🔷 Store: New roadmapItems array:", newItems);
+          return { roadmapItems: newItems };
+        });
+        setTimeout(() => {
+          console.log(
+            "🔷 Store: Verified roadmapItems after add:",
+            get().roadmapItems
+          );
+        }, 100);
+      },
+      updateRoadmapItem: (id, updates) => {
+        console.log("🔷 Store: Updating roadmap item", { id, updates });
         set((state) => ({
           roadmapItems: state.roadmapItems.map((item) =>
             item.id === id ? { ...item, ...updates } : item
           ),
-        })),
+        }));
+        setTimeout(() => {
+          console.log(
+            "🔷 Store: Verified roadmapItems after update:",
+            get().roadmapItems
+          );
+        }, 100);
+      },
       deleteRoadmapItem: (id) =>
         set((state) => ({
           roadmapItems: state.roadmapItems.filter((item) => item.id !== id),
@@ -88,61 +109,100 @@ const useManageStore = create(
 
       // Add a week to a roadmap
       addWeekToRoadmap: (roadmapId, weekNumber, topic) => {
-        console.log("Store: Adding week", { roadmapId, weekNumber, topic });
-        set((state) => ({
-          roadmapItems: state.roadmapItems.map((item) => {
-            if (item.id === roadmapId) {
-              const newWeeks = [
-                ...item.weeks,
-                {
-                  weekNumber: weekNumber,
-                  week: weekNumber,
-                  topic: topic,
-                  current: false,
-                  next: false,
-                  subTopics: [],
-                },
-              ];
-              console.log("Store: New weeks array:", newWeeks);
-              return { ...item, weeks: newWeeks };
-            }
-            return item;
-          }),
-        }));
-        setTimeout(() => {
-          console.log(
-            "Store: Current roadmapItems after add week:",
-            get().roadmapItems
-          );
-        }, 0);
-      },
-
-      // Add a subtopic to a specific week
-      addSubTopicToWeek: (roadmapId, weekIndex, subTopicName) => {
-        console.log("Store: Adding subtopic", {
-          roadmapId,
-          weekIndex,
-          subTopicName,
-        });
-        console.log("Store: Current state before add:", get().roadmapItems);
+        console.log("🔶 Store: Adding week", { roadmapId, weekNumber, topic });
+        console.log(
+          "🔶 Store: Current roadmapItems BEFORE:",
+          JSON.parse(JSON.stringify(get().roadmapItems))
+        );
 
         set((state) => {
           const newRoadmapItems = state.roadmapItems.map((item) => {
             if (item.id === roadmapId) {
-              console.log("Store: Found matching roadmap item:", item);
-              const newWeeks = [...item.weeks];
+              console.log(
+                "🔶 Store: Found matching roadmap, current weeks:",
+                item.weeks
+              );
+              const newWeek = {
+                weekNumber: weekNumber,
+                week: weekNumber,
+                topic: topic,
+                current: false,
+                next: false,
+                subTopics: [],
+              };
+              const newWeeks = [...(item.weeks || []), newWeek];
+              console.log("🔶 Store: New weeks array:", newWeeks);
+              return { ...item, weeks: newWeeks };
+            }
+            return item;
+          });
+          console.log(
+            "🔶 Store: New roadmapItems:",
+            JSON.parse(JSON.stringify(newRoadmapItems))
+          );
+          return { roadmapItems: newRoadmapItems };
+        });
 
-              if (newWeeks[weekIndex]) {
+        setTimeout(() => {
+          console.log(
+            "🔶 Store: Verified roadmapItems AFTER add week:",
+            JSON.parse(JSON.stringify(get().roadmapItems))
+          );
+        }, 100);
+      },
+
+      // Add a subtopic to a specific week
+      addSubTopicToWeek: (roadmapId, weekIndex, subTopicName) => {
+        console.log("🟢 Store: Adding subtopic START", {
+          roadmapId,
+          weekIndex,
+          subTopicName,
+        });
+        console.log(
+          "🟢 Store: Current state BEFORE:",
+          JSON.parse(JSON.stringify(get().roadmapItems))
+        );
+
+        set((state) => {
+          const newRoadmapItems = state.roadmapItems.map((item) => {
+            if (item.id === roadmapId) {
+              console.log(
+                "🟢 Store: Found matching roadmap item:",
+                JSON.parse(JSON.stringify(item))
+              );
+
+              // Make a deep copy of weeks
+              const newWeeks = JSON.parse(JSON.stringify(item.weeks || []));
+              console.log("🟢 Store: Copied weeks array:", newWeeks);
+              console.log("🟢 Store: Total weeks:", newWeeks.length);
+              console.log(
+                "🟢 Store: Trying to access week at index:",
+                weekIndex
+              );
+
+              if (weekIndex >= 0 && weekIndex < newWeeks.length) {
+                const targetWeek = newWeeks[weekIndex];
                 console.log(
-                  "Store: Found week at index",
+                  "🟢 Store: Found week at index",
                   weekIndex,
-                  newWeeks[weekIndex]
+                  ":",
+                  targetWeek
                 );
+
+                // Ensure subTopics array exists
+                if (!targetWeek.subTopics) {
+                  targetWeek.subTopics = [];
+                }
+
+                console.log(
+                  "🟢 Store: Current subTopics:",
+                  targetWeek.subTopics
+                );
+
+                // Generate new ID
                 const maxId =
-                  newWeeks[weekIndex].subTopics.length > 0
-                    ? Math.max(
-                        ...newWeeks[weekIndex].subTopics.map((st) => st.id)
-                      )
+                  targetWeek.subTopics.length > 0
+                    ? Math.max(...targetWeek.subTopics.map((st) => st.id))
                     : 0;
 
                 const newSubTopic = {
@@ -151,37 +211,60 @@ const useManageStore = create(
                   completed: false,
                 };
 
-                console.log("Store: Adding new subtopic:", newSubTopic);
-                newWeeks[weekIndex] = {
-                  ...newWeeks[weekIndex],
-                  subTopics: [...newWeeks[weekIndex].subTopics, newSubTopic],
-                };
-
-                console.log("Store: Updated week:", newWeeks[weekIndex]);
-              } else {
-                console.error(
-                  "Store: Week index not found:",
-                  weekIndex,
-                  "Total weeks:",
-                  newWeeks.length
+                console.log("🟢 Store: Creating new subtopic:", newSubTopic);
+                targetWeek.subTopics.push(newSubTopic);
+                console.log(
+                  "🟢 Store: Updated subTopics array:",
+                  targetWeek.subTopics
                 );
+                console.log("🟢 Store: Updated week:", targetWeek);
+              } else {
+                console.error("🔴 Store: Week index OUT OF BOUNDS!", {
+                  weekIndex,
+                  totalWeeks: newWeeks.length,
+                  availableIndexes: newWeeks.map((w, i) => i),
+                });
               }
 
-              return { ...item, weeks: newWeeks };
+              const updatedItem = { ...item, weeks: newWeeks };
+              console.log(
+                "🟢 Store: Final updated item:",
+                JSON.parse(JSON.stringify(updatedItem))
+              );
+              return updatedItem;
             }
             return item;
           });
 
-          console.log("Store: New roadmapItems:", newRoadmapItems);
+          console.log(
+            "🟢 Store: Final newRoadmapItems:",
+            JSON.parse(JSON.stringify(newRoadmapItems))
+          );
           return { roadmapItems: newRoadmapItems };
         });
 
         setTimeout(() => {
+          const finalState = get().roadmapItems;
           console.log(
-            "Store: Current state after add subtopic:",
-            get().roadmapItems
+            "🟢 Store: Verified state AFTER add subtopic:",
+            JSON.parse(JSON.stringify(finalState))
           );
-        }, 0);
+
+          // Find and log the specific roadmap item
+          const targetItem = finalState.find((item) => item.id === roadmapId);
+          if (targetItem) {
+            console.log(
+              "🟢 Store: Target roadmap after update:",
+              JSON.parse(JSON.stringify(targetItem))
+            );
+            if (targetItem.weeks && targetItem.weeks[weekIndex]) {
+              console.log(
+                "🟢 Store: Target week after update:",
+                JSON.parse(JSON.stringify(targetItem.weeks[weekIndex]))
+              );
+            }
+          }
+        }, 100);
       },
 
       // Toggle subtopic completion
