@@ -513,30 +513,37 @@ const Administrator = () => {
       alert("Attendance record deleted successfully!");
     }
   };
+const handleGradeSubmit = (id, type) => {
+  const grade = parseFloat(formData[id]);
+  let item;
 
-  const handleGradeSubmit = (id, type) => {
-    const grade = parseFloat(formData[id]);
-    let item;
-    if (type === "assignment") {
-      item = assignments.find((a) => a.id === id);
-      updateAssignment(id, { status: "graded", grade });
-    } else if (type === "exercise") {
-      item = exercises.find((e) => e.id === id);
-      updateExercise(id, { status: "graded", grade });
-    } else if (type === "project") {
-      item = projects.find((p) => p.id === id);
-      updateProject(id, { status: "graded", grade });
-    }
+  // Find the item first before validation
+  if (type === "assignment") {
+    item = assignments.find((a) => a.id === id);
+  } else if (type === "exercise") {
+    item = exercises.find((e) => e.id === id);
+  } else if (type === "project") {
+    item = projects.find((p) => p.id === id);
+  }
 
-    if (isNaN(grade) || grade < 0 || grade > item.points) {
-      alert("Please enter a valid grade between 0 and the maximum points.");
-      return;
-    }
+  // Validate grade before updating
+  if (isNaN(grade) || grade < 0 || grade > item.points) {
+    alert(`Please enter a valid grade between 0 and ${item.points} points.`);
+    return;
+  }
 
-    setFormData((prev) => ({ ...prev, [id]: "" }));
-    alert("Grade submitted successfully!");
-  };
+  // Update status only after validation
+  if (type === "assignment") {
+    updateAssignment(id, { status: "graded", grade });
+  } else if (type === "exercise") {
+    updateExercise(id, { status: "graded", grade });
+  } else if (type === "project") {
+    updateProject(id, { status: "graded", grade });
+  }
 
+  setFormData((prev) => ({ ...prev, [id]: "" }));
+  alert("Grade submitted successfully!");
+};
   const filteredAssignments =
     activeTab === "assignments"
       ? assignments.filter(

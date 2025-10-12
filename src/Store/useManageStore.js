@@ -186,41 +186,7 @@ const useManageStore = create(
 
       // State for Attendance
       attendance: [
-        {
-          id: 1,
-          date: "2025-10-03",
-          status: "present",
-          topic: "REST API Design",
-          studentId: 1,
-        },
-        {
-          id: 2,
-          date: "2025-10-02",
-          status: "present",
-          topic: "Express.js Routing",
-          studentId: 1,
-        },
-        {
-          id: 3,
-          date: "2025-10-01",
-          status: "present",
-          topic: "Postman Basics",
-          studentId: 1,
-        },
-        {
-          id: 4,
-          date: "2025-09-30",
-          status: "absent",
-          topic: "HTTP Methods",
-          studentId: 1,
-        },
-        {
-          id: 5,
-          date: "2025-09-29",
-          status: "present",
-          topic: "Node.js Fundamentals",
-          studentId: 1,
-        },
+      
       ],
       addAttendance: (attendance) =>
         set((state) => ({
