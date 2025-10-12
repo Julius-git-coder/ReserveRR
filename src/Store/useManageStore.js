@@ -1,5 +1,3 @@
-
-
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -448,6 +446,104 @@ const useManageStore = create(
       deleteAttendance: (id) =>
         set((state) => ({
           attendance: state.attendance.filter((a) => a.id !== id),
+        })),
+
+      // State for Programs
+      programs: [],
+      addProgram: (program) =>
+        set((state) => ({
+          programs: [program, ...state.programs],
+        })),
+      updateProgram: (id, updatedProgram) =>
+        set((state) => ({
+          programs: state.programs.map((p) =>
+            p.id === id ? { ...p, ...updatedProgram } : p
+          ),
+        })),
+      deleteProgram: (id) =>
+        set((state) => ({
+          programs: state.programs.filter((p) => p.id !== id),
+        })),
+      addMilestoneToProgram: (programId, milestoneName) => {
+        set((state) => ({
+          programs: state.programs.map((p) => {
+            if (p.id === programId) {
+              const newMilestones = [...(p.milestones || [])];
+              const maxId =
+                newMilestones.length > 0
+                  ? Math.max(...newMilestones.map((m) => m.id))
+                  : 0;
+              newMilestones.push({
+                id: maxId + 1,
+                name: milestoneName,
+                completed: false,
+              });
+              return { ...p, milestones: newMilestones };
+            }
+            return p;
+          }),
+        }));
+      },
+      adminToggleMilestoneComplete: (programId, milestoneId) =>
+        set((state) => ({
+          programs: state.programs.map((p) => {
+            if (p.id === programId) {
+              return {
+                ...p,
+                milestones:
+                  p.milestones?.map((m) =>
+                    m.id === milestoneId ? { ...m, completed: !m.completed } : m
+                  ) || [],
+              };
+            }
+            return p;
+          }),
+        })),
+      requestJoinProgram: (programId, studentId = 1) =>
+        set((state) => ({
+          programs: state.programs.map((p) => {
+            if (
+              p.id === programId &&
+              !p.pendingRequests?.includes(studentId) &&
+              !p.enrolledStudents?.includes(studentId)
+            ) {
+              return {
+                ...p,
+                pendingRequests: [...(p.pendingRequests || []), studentId],
+              };
+            }
+            return p;
+          }),
+        })),
+      approveJoinRequest: (programId, studentId = 1) =>
+        set((state) => ({
+          programs: state.programs.map((p) => {
+            if (p.id === programId) {
+              const pending =
+                p.pendingRequests?.filter((id) => id !== studentId) || [];
+              const enrolled = [...(p.enrolledStudents || []), studentId];
+              return {
+                ...p,
+                pendingRequests: pending,
+                enrolledStudents: enrolled,
+              };
+            }
+            return p;
+          }),
+        })),
+      rejectJoinRequest: (programId, studentId = 1) =>
+        set((state) => ({
+          programs: state.programs.map((p) => {
+            if (p.id === programId) {
+              const pending =
+                p.pendingRequests?.filter((id) => id !== studentId) || [];
+              return {
+                ...p,
+                pendingRequests: pending,
+              };
+            }
+            return p;
+          }),
         })),
     }),
     {

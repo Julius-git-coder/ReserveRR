@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from "react";
 import {
   Users,
@@ -18,6 +16,9 @@ import {
   Download,
   ExternalLink,
   CheckCircle,
+  Briefcase,
+  Target,
+  Award,
 } from "lucide-react";
 import useManageStore from "../Store/useManageStore";
 
@@ -75,6 +76,20 @@ const Administrator = () => {
   const deleteClassMaterial = useManageStore(
     (state) => state.deleteClassMaterial
   );
+  const programs = useManageStore((state) => state.programs);
+  const addProgram = useManageStore((state) => state.addProgram);
+  const updateProgram = useManageStore((state) => state.updateProgram);
+  const deleteProgram = useManageStore((state) => state.deleteProgram);
+  const addMilestoneToProgram = useManageStore(
+    (state) => state.addMilestoneToProgram
+  );
+  const adminToggleMilestoneComplete = useManageStore(
+    (state) => state.adminToggleMilestoneComplete
+  );
+  const approveJoinRequest = useManageStore(
+    (state) => state.approveJoinRequest
+  );
+  const rejectJoinRequest = useManageStore((state) => state.rejectJoinRequest);
 
   // Debug log
   useEffect(() => {
@@ -85,6 +100,7 @@ const Administrator = () => {
     console.log("Administrator - Attendance:", attendance);
     console.log("Administrator - Roadmap Items:", roadmapItems);
     console.log("Administrator - Class Materials:", classMaterials);
+    console.log("Administrator - Programs:", programs);
   }, [
     announcements,
     assignments,
@@ -93,6 +109,7 @@ const Administrator = () => {
     attendance,
     roadmapItems,
     classMaterials,
+    programs,
   ]);
 
   const [recentStudents] = useState([
@@ -542,6 +559,66 @@ const Administrator = () => {
         }
         break;
       }
+      case "program":
+      case "program-edit": {
+        if (
+          !formData.name ||
+          !formData.description ||
+          !formData.totalMilestones
+        ) {
+          alert(
+            "Please fill in all required fields (Name, Description, Total Milestones)."
+          );
+          return;
+        }
+        const totalMilestones = parseInt(formData.totalMilestones);
+        if (isNaN(totalMilestones) || totalMilestones <= 0) {
+          alert("Please enter a valid number for total milestones.");
+          return;
+        }
+        if (selectedForm === "program") {
+          const newProgram = {
+            id: newId(programs),
+            name: formData.name,
+            description: formData.description,
+            totalMilestones,
+            milestones: [],
+            pendingRequests: [],
+            enrolledStudents: [],
+          };
+          addProgram(newProgram);
+          alert("Program added successfully!");
+        } else {
+          updateProgram(formData.id, {
+            name: formData.name,
+            description: formData.description,
+            totalMilestones,
+          });
+          alert("Program updated successfully!");
+        }
+        break;
+      }
+      case "milestone": {
+        if (!formData.programId || !formData.milestoneName) {
+          alert(
+            "Please fill in all required fields (Program ID and Milestone Name)."
+          );
+          return;
+        }
+        const programId = parseInt(formData.programId);
+        const program = programs.find((p) => p.id === programId);
+        if (!program) {
+          alert("Program not found.");
+          return;
+        }
+        if (program.milestones.length >= program.totalMilestones) {
+          alert("Maximum milestones reached for this program.");
+          return;
+        }
+        addMilestoneToProgram(programId, formData.milestoneName);
+        alert("Milestone added successfully!");
+        break;
+      }
       default:
         break;
     }
@@ -654,6 +731,16 @@ const Administrator = () => {
     setSelectedForm("classmaterial-edit");
   };
 
+  const handleEditProgram = (program) => {
+    setFormData({
+      id: program.id,
+      name: program.name,
+      description: program.description,
+      totalMilestones: program.totalMilestones,
+    });
+    setSelectedForm("program-edit");
+  };
+
   const handleDeleteAssignment = (assignmentId) => {
     if (window.confirm("Are you sure you want to delete this assignment?")) {
       deleteAssignment(assignmentId);
@@ -700,6 +787,13 @@ const Administrator = () => {
     }
   };
 
+  const handleDeleteProgram = (programId) => {
+    if (window.confirm("Are you sure you want to delete this program?")) {
+      deleteProgram(programId);
+      alert("Program deleted successfully!");
+    }
+  };
+
   const handleGradeSubmit = (id, type) => {
     const grade = parseFloat(formData[id]);
     let item;
@@ -740,6 +834,21 @@ const Administrator = () => {
       deleteSubTopic(roadmapId, weekIndex, subTopicId);
       alert("Subtopic deleted successfully!");
     }
+  };
+
+  const handleAdminToggleMilestone = (programId, milestoneId) => {
+    adminToggleMilestoneComplete(programId, milestoneId);
+    alert("Milestone completion status updated!");
+  };
+
+  const handleApproveJoin = (programId) => {
+    approveJoinRequest(programId, 1);
+    alert("Join request approved!");
+  };
+
+  const handleRejectJoin = (programId) => {
+    rejectJoinRequest(programId, 1);
+    alert("Join request rejected!");
   };
 
   const filteredAssignments =
@@ -805,6 +914,15 @@ const Administrator = () => {
           c.title.toLowerCase().includes(searchTerm.toLowerCase())
         )
       : classMaterials;
+
+  const filteredPrograms =
+    activeTab === "programs"
+      ? programs.filter(
+          (p) =>
+            p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.description.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : programs;
 
   const renderForm = () => {
     switch (selectedForm) {
@@ -1348,6 +1466,88 @@ const Administrator = () => {
             </div>
           </div>
         );
+      case "program":
+      case "program-edit":
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">Name *</label>
+              <input
+                type="text"
+                value={formData.name || ""}
+                onChange={(e) => handleFormChange("name", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Description *
+              </label>
+              <textarea
+                value={formData.description || ""}
+                onChange={(e) =>
+                  handleFormChange("description", e.target.value)
+                }
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                rows="4"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Total Milestones *
+              </label>
+              <input
+                type="number"
+                value={formData.totalMilestones || ""}
+                onChange={(e) =>
+                  handleFormChange("totalMilestones", e.target.value)
+                }
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+                placeholder="e.g., 5"
+              />
+              <p className="text-gray-500 text-xs mt-1">
+                Enter the total number of milestones for this program.
+              </p>
+            </div>
+          </div>
+        );
+      case "milestone":
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Program ID *
+              </label>
+              <input
+                type="number"
+                value={formData.programId || ""}
+                onChange={(e) => handleFormChange("programId", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+              <p className="text-gray-500 text-xs mt-1">
+                Enter the ID of the program to add the milestone to.
+              </p>
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Milestone Name *
+              </label>
+              <input
+                type="text"
+                value={formData.milestoneName || ""}
+                onChange={(e) =>
+                  handleFormChange("milestoneName", e.target.value)
+                }
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -1390,6 +1590,8 @@ const Administrator = () => {
             <option value="week">New Week</option>
             <option value="subtopic">New Subtopic</option>
             <option value="classmaterial">New Class Material</option>
+            <option value="program">New Program</option>
+            <option value="milestone">New Milestone</option>
           </select>
           <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2">
             <Settings className="w-4 h-4" />
@@ -1422,6 +1624,9 @@ const Administrator = () => {
                 {selectedForm === "subtopic" && "New Subtopic"}
                 {selectedForm === "classmaterial" && "New Class Material"}
                 {selectedForm === "classmaterial-edit" && "Edit Class Material"}
+                {selectedForm === "program" && "New Program"}
+                {selectedForm === "program-edit" && "Edit Program"}
+                {selectedForm === "milestone" && "New Milestone"}
               </h2>
               <button
                 onClick={() => {
@@ -1557,6 +1762,16 @@ const Administrator = () => {
             }`}
           >
             Class Materials
+          </button>
+          <button
+            onClick={() => setActiveTab("programs")}
+            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+              activeTab === "programs"
+                ? "bg-yellow-500 text-gray-900"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            Programs
           </button>
         </div>
       </div>
@@ -2535,6 +2750,227 @@ const Administrator = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Programs Tab */}
+      {activeTab === "programs" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
+              <Briefcase className="w-5 h-5 text-yellow-500" />
+              <span>All Programs</span>
+            </h3>
+            <button
+              onClick={() => {
+                setSelectedForm("program");
+                setFormData({});
+              }}
+              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+            >
+              New Program
+            </button>
+          </div>
+          <input
+            type="text"
+            placeholder="Search programs..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+          />
+          {filteredPrograms.length === 0 ? (
+            <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+              <p className="text-gray-400 text-lg">No programs yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredPrograms.map((program) => {
+                const completedMilestones =
+                  program.milestones?.filter((m) => m.completed).length || 0;
+                const total = program.totalMilestones || 0;
+                const progress =
+                  total > 0
+                    ? ((completedMilestones / total) * 100).toFixed(0)
+                    : 0;
+                return (
+                  <div
+                    key={program.id}
+                    className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h4 className="text-white font-semibold text-lg mb-2">
+                          {program.name}
+                        </h4>
+                        <p className="text-gray-400 text-sm mb-3">
+                          {program.description}
+                        </p>
+                        <div className="mb-3">
+                          <p className="text-gray-400 text-sm mb-2">
+                            Progress: {completedMilestones}/{total} ({progress}
+                            %)
+                          </p>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div
+                              className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                        {program.pendingRequests &&
+                          program.pendingRequests.length > 0 && (
+                            <div className="mb-4">
+                              <p className="text-gray-400 text-sm font-semibold mb-2">
+                                Pending Join Requests:
+                              </p>
+                              <div className="space-y-2">
+                                {program.pendingRequests.map((studentId) => (
+                                  <div
+                                    key={studentId}
+                                    className="flex items-center justify-between bg-yellow-900 p-2 rounded"
+                                  >
+                                    <span className="text-yellow-300 text-sm">
+                                      Julius Dagana (ID: {studentId})
+                                    </span>
+                                    <div className="space-x-2">
+                                      <button
+                                        onClick={() =>
+                                          handleApproveJoin(program.id)
+                                        }
+                                        className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs"
+                                      >
+                                        Approve
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleRejectJoin(program.id)
+                                        }
+                                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs"
+                                      >
+                                        Reject
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        {program.enrolledStudents &&
+                          program.enrolledStudents.length > 0 && (
+                            <div className="mb-4">
+                              <p className="text-gray-400 text-sm font-semibold mb-2">
+                                Enrolled Students:
+                              </p>
+                              <div className="space-y-1">
+                                {program.enrolledStudents.map((studentId) => (
+                                  <span
+                                    key={studentId}
+                                    className="inline-block bg-green-900 text-green-300 px-2 py-1 rounded text-xs"
+                                  >
+                                    Julius Dagana (ID: {studentId})
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        {program.milestones &&
+                          program.milestones.length > 0 && (
+                            <div className="mt-4 space-y-3">
+                              <h5 className="text-gray-400 text-sm font-semibold">
+                                Milestones:
+                              </h5>
+                              {program.milestones.map((milestone) => (
+                                <div
+                                  key={milestone.id}
+                                  className="bg-gray-900 rounded-lg p-3"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span
+                                      className={`text-sm ${
+                                        milestone.completed
+                                          ? "text-green-400 line-through"
+                                          : "text-white"
+                                      }`}
+                                    >
+                                      {milestone.name}
+                                    </span>
+                                    <div className="flex items-center space-x-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={milestone.completed}
+                                        onChange={() =>
+                                          handleAdminToggleMilestone(
+                                            program.id,
+                                            milestone.id
+                                          )
+                                        }
+                                        className="w-4 h-4"
+                                      />
+                                      <span
+                                        className={`px-2 py-1 rounded-full text-xs ${
+                                          milestone.completed
+                                            ? "bg-green-500 text-white"
+                                            : "bg-gray-500 text-white"
+                                        }`}
+                                      >
+                                        {milestone.completed
+                                          ? "Completed"
+                                          : "Pending"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        {(!program.milestones ||
+                          program.milestones.length === 0) && (
+                          <button
+                            onClick={() => {
+                              setSelectedForm("milestone");
+                              setFormData({ programId: program.id });
+                            }}
+                            className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                          >
+                            Add First Milestone
+                          </button>
+                        )}
+                        {program.milestones &&
+                          program.milestones.length <
+                            program.totalMilestones && (
+                            <button
+                              onClick={() => {
+                                setSelectedForm("milestone");
+                                setFormData({ programId: program.id });
+                              }}
+                              className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                            >
+                              Add Milestone
+                            </button>
+                          )}
+                      </div>
+                      <div className="flex items-center space-x-3 ml-4">
+                        <button
+                          onClick={() => handleEditProgram(program)}
+                          className="text-yellow-500 hover:text-yellow-400"
+                          title="Edit Program"
+                        >
+                          <Edit className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProgram(program.id)}
+                          className="text-red-500 hover:text-red-400"
+                          title="Delete Program"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
