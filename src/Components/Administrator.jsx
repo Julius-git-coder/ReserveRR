@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Users,
@@ -334,7 +333,7 @@ const Administrator = () => {
           alert("Please fill in all required fields.");
           return;
         }
-        Witryna;
+
         const points = parseInt(formData.points);
         if (isNaN(points) || points <= 0) {
           alert("Please enter a valid number of points.");
