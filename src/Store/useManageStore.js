@@ -88,13 +88,15 @@ const useManageStore = create(
         })),
 
       // Add a week to a roadmap
-      addWeekToRoadmap: (roadmapId, weekNumber, topic) =>
+      addWeekToRoadmap: (roadmapId, weekNumber, topic) => {
+        console.log("Store: Adding week", { roadmapId, weekNumber, topic });
         set((state) => ({
           roadmapItems: state.roadmapItems.map((item) => {
             if (item.id === roadmapId) {
               const newWeeks = [
                 ...item.weeks,
                 {
+                  weekNumber: weekNumber,
                   week: weekNumber,
                   topic: topic,
                   current: false,
@@ -102,34 +104,86 @@ const useManageStore = create(
                   subTopics: [],
                 },
               ];
+              console.log("Store: New weeks array:", newWeeks);
               return { ...item, weeks: newWeeks };
             }
             return item;
           }),
-        })),
+        }));
+        setTimeout(() => {
+          console.log(
+            "Store: Current roadmapItems after add week:",
+            get().roadmapItems
+          );
+        }, 0);
+      },
 
       // Add a subtopic to a specific week
-      addSubTopicToWeek: (roadmapId, weekIndex, subTopicName) =>
-        set((state) => ({
-          roadmapItems: state.roadmapItems.map((item) => {
+      addSubTopicToWeek: (roadmapId, weekIndex, subTopicName) => {
+        console.log("Store: Adding subtopic", {
+          roadmapId,
+          weekIndex,
+          subTopicName,
+        });
+        console.log("Store: Current state before add:", get().roadmapItems);
+
+        set((state) => {
+          const newRoadmapItems = state.roadmapItems.map((item) => {
             if (item.id === roadmapId) {
+              console.log("Store: Found matching roadmap item:", item);
               const newWeeks = [...item.weeks];
-              const maxId =
-                newWeeks[weekIndex].subTopics.length > 0
-                  ? Math.max(
-                      ...newWeeks[weekIndex].subTopics.map((st) => st.id)
-                    )
-                  : 0;
-              newWeeks[weekIndex].subTopics.push({
-                id: maxId + 1,
-                name: subTopicName,
-                completed: false,
-              });
+
+              if (newWeeks[weekIndex]) {
+                console.log(
+                  "Store: Found week at index",
+                  weekIndex,
+                  newWeeks[weekIndex]
+                );
+                const maxId =
+                  newWeeks[weekIndex].subTopics.length > 0
+                    ? Math.max(
+                        ...newWeeks[weekIndex].subTopics.map((st) => st.id)
+                      )
+                    : 0;
+
+                const newSubTopic = {
+                  id: maxId + 1,
+                  name: subTopicName,
+                  completed: false,
+                };
+
+                console.log("Store: Adding new subtopic:", newSubTopic);
+                newWeeks[weekIndex] = {
+                  ...newWeeks[weekIndex],
+                  subTopics: [...newWeeks[weekIndex].subTopics, newSubTopic],
+                };
+
+                console.log("Store: Updated week:", newWeeks[weekIndex]);
+              } else {
+                console.error(
+                  "Store: Week index not found:",
+                  weekIndex,
+                  "Total weeks:",
+                  newWeeks.length
+                );
+              }
+
               return { ...item, weeks: newWeeks };
             }
             return item;
-          }),
-        })),
+          });
+
+          console.log("Store: New roadmapItems:", newRoadmapItems);
+          return { roadmapItems: newRoadmapItems };
+        });
+
+        setTimeout(() => {
+          console.log(
+            "Store: Current state after add subtopic:",
+            get().roadmapItems
+          );
+        }, 0);
+      },
 
       // Toggle subtopic completion
       toggleSubTopicComplete: (roadmapId, weekIndex, subTopicId) =>
@@ -138,9 +192,13 @@ const useManageStore = create(
             if (item.id === roadmapId) {
               const newWeeks = [...item.weeks];
               const week = newWeeks[weekIndex];
-              week.subTopics = week.subTopics.map((st) =>
-                st.id === subTopicId ? { ...st, completed: !st.completed } : st
-              );
+              if (week) {
+                week.subTopics = week.subTopics.map((st) =>
+                  st.id === subTopicId
+                    ? { ...st, completed: !st.completed }
+                    : st
+                );
+              }
               return { ...item, weeks: newWeeks };
             }
             return item;
@@ -153,9 +211,11 @@ const useManageStore = create(
           roadmapItems: state.roadmapItems.map((item) => {
             if (item.id === roadmapId) {
               const newWeeks = [...item.weeks];
-              newWeeks[weekIndex].subTopics = newWeeks[
-                weekIndex
-              ].subTopics.filter((st) => st.id !== subTopicId);
+              if (newWeeks[weekIndex]) {
+                newWeeks[weekIndex].subTopics = newWeeks[
+                  weekIndex
+                ].subTopics.filter((st) => st.id !== subTopicId);
+              }
               return { ...item, weeks: newWeeks };
             }
             return item;
