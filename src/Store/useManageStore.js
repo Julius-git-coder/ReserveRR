@@ -1,7 +1,4 @@
 
-
-
-
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -73,11 +70,112 @@ const useManageStore = create(
           workReadyResources: [resource, ...state.workReadyResources],
         })),
 
-      // State for Roadmap Items
+      // State for Roadmap Items - ENHANCED
       roadmapItems: [],
       addRoadmapItem: (item) =>
         set((state) => ({
           roadmapItems: [item, ...state.roadmapItems],
+        })),
+      updateRoadmapItem: (id, updates) =>
+        set((state) => ({
+          roadmapItems: state.roadmapItems.map((item) =>
+            item.id === id ? { ...item, ...updates } : item
+          ),
+        })),
+      deleteRoadmapItem: (id) =>
+        set((state) => ({
+          roadmapItems: state.roadmapItems.filter((item) => item.id !== id),
+        })),
+
+      // Add a week to a roadmap
+      addWeekToRoadmap: (roadmapId, weekNumber, topic) =>
+        set((state) => ({
+          roadmapItems: state.roadmapItems.map((item) => {
+            if (item.id === roadmapId) {
+              const newWeeks = [
+                ...item.weeks,
+                {
+                  week: weekNumber,
+                  topic: topic,
+                  current: false,
+                  next: false,
+                  subTopics: [],
+                },
+              ];
+              return { ...item, weeks: newWeeks };
+            }
+            return item;
+          }),
+        })),
+
+      // Add a subtopic to a specific week
+      addSubTopicToWeek: (roadmapId, weekIndex, subTopicName) =>
+        set((state) => ({
+          roadmapItems: state.roadmapItems.map((item) => {
+            if (item.id === roadmapId) {
+              const newWeeks = [...item.weeks];
+              const maxId =
+                newWeeks[weekIndex].subTopics.length > 0
+                  ? Math.max(
+                      ...newWeeks[weekIndex].subTopics.map((st) => st.id)
+                    )
+                  : 0;
+              newWeeks[weekIndex].subTopics.push({
+                id: maxId + 1,
+                name: subTopicName,
+                completed: false,
+              });
+              return { ...item, weeks: newWeeks };
+            }
+            return item;
+          }),
+        })),
+
+      // Toggle subtopic completion
+      toggleSubTopicComplete: (roadmapId, weekIndex, subTopicId) =>
+        set((state) => ({
+          roadmapItems: state.roadmapItems.map((item) => {
+            if (item.id === roadmapId) {
+              const newWeeks = [...item.weeks];
+              const week = newWeeks[weekIndex];
+              week.subTopics = week.subTopics.map((st) =>
+                st.id === subTopicId ? { ...st, completed: !st.completed } : st
+              );
+              return { ...item, weeks: newWeeks };
+            }
+            return item;
+          }),
+        })),
+
+      // Delete a subtopic
+      deleteSubTopic: (roadmapId, weekIndex, subTopicId) =>
+        set((state) => ({
+          roadmapItems: state.roadmapItems.map((item) => {
+            if (item.id === roadmapId) {
+              const newWeeks = [...item.weeks];
+              newWeeks[weekIndex].subTopics = newWeeks[
+                weekIndex
+              ].subTopics.filter((st) => st.id !== subTopicId);
+              return { ...item, weeks: newWeeks };
+            }
+            return item;
+          }),
+        })),
+
+      // Set current week
+      setCurrentWeek: (roadmapId, weekIndex) =>
+        set((state) => ({
+          roadmapItems: state.roadmapItems.map((item) => {
+            if (item.id === roadmapId) {
+              const newWeeks = item.weeks.map((w, idx) => ({
+                ...w,
+                current: idx === weekIndex,
+                next: idx === weekIndex + 1,
+              }));
+              return { ...item, weeks: newWeeks };
+            }
+            return item;
+          }),
         })),
 
       // State for Resource Library
@@ -185,9 +283,7 @@ const useManageStore = create(
         })),
 
       // State for Attendance
-      attendance: [
-      
-      ],
+      attendance: [],
       addAttendance: (attendance) =>
         set((state) => ({
           attendance: [attendance, ...state.attendance],

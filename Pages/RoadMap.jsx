@@ -7,72 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-
-// Mock store for demonstration - replace with your actual useManageStore
-const useManageStore = (selector) => {
-  const [store] = useState({
-    roadmapItems: [
-      {
-        id: 1,
-        term: "Term 1",
-        phase: "Frontend Fundamentals",
-        status: "in-progress",
-        weeks: [
-          {
-            week: 1,
-            topic: "HTML & CSS Basics",
-            current: true,
-            subTopics: [
-              { name: "HTML Elements & Structure", completed: true },
-              { name: "CSS Selectors & Properties", completed: true },
-              { name: "Flexbox Layout", completed: false },
-              { name: "Grid Layout", completed: false },
-            ],
-          },
-          {
-            week: 2,
-            topic: "JavaScript Fundamentals",
-            next: true,
-            subTopics: [
-              { name: "Variables & Data Types", completed: false },
-              { name: "Functions & Scope", completed: false },
-              { name: "DOM Manipulation", completed: false },
-              { name: "Event Handlers", completed: false },
-            ],
-          },
-          {
-            week: 3,
-            topic: "Responsive Design",
-            subTopics: [
-              { name: "Media Queries", completed: false },
-              { name: "Mobile-First Approach", completed: false },
-              { name: "CSS Frameworks", completed: false },
-            ],
-          },
-        ],
-      },
-      {
-        id: 2,
-        term: "Term 2",
-        phase: "Advanced Frontend",
-        status: "not-started",
-        weeks: [
-          {
-            week: 4,
-            topic: "React Basics",
-            subTopics: [
-              { name: "Components & Props", completed: false },
-              { name: "State & Lifecycle", completed: false },
-              { name: "Hooks", completed: false },
-            ],
-          },
-        ],
-      },
-    ],
-  });
-
-  return selector ? selector(store) : store;
-};
+import useManageStore from "../src/Store/useManageStore";
 
 const RoadMap = () => {
   const roadmapItems = useManageStore((state) => state.roadmapItems);
@@ -129,9 +64,9 @@ const RoadMap = () => {
                   Sub-topics:
                 </p>
                 <ul className="space-y-2">
-                  {week.subTopics?.map((subTopic, sIdx) => (
+                  {week.subTopics?.map((subTopic) => (
                     <li
-                      key={sIdx}
+                      key={subTopic.id}
                       className="flex items-center space-x-2 text-gray-300"
                     >
                       {subTopic.completed ? (
@@ -175,9 +110,9 @@ const RoadMap = () => {
                   Upcoming sub-topics:
                 </p>
                 <ul className="space-y-2">
-                  {week.subTopics?.map((subTopic, sIdx) => (
+                  {week.subTopics?.map((subTopic) => (
                     <li
-                      key={sIdx}
+                      key={subTopic.id}
                       className="flex items-center space-x-2 text-gray-400"
                     >
                       <Circle className="w-4 h-4 text-gray-600 flex-shrink-0" />
@@ -263,9 +198,9 @@ const RoadMap = () => {
                               Sub-topics:
                             </p>
                             <ul className="space-y-2 pl-9">
-                              {week.subTopics.map((subTopic, sIdx) => (
+                              {week.subTopics.map((subTopic) => (
                                 <li
-                                  key={sIdx}
+                                  key={subTopic.id}
                                   className="flex items-center space-x-2"
                                 >
                                   {subTopic.completed ? (

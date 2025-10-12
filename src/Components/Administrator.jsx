@@ -13,9 +13,9 @@ import {
   Dumbbell,
   FolderOpen,
   UserCheck,
+  Map,
 } from "lucide-react";
 import useManageStore from "../Store/useManageStore";
-import Projects from "../../Pages/Projects";
 
 const Administrator = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -52,6 +52,17 @@ const Administrator = () => {
   const addAttendance = useManageStore((state) => state.addAttendance);
   const updateAttendance = useManageStore((state) => state.updateAttendance);
   const deleteAttendance = useManageStore((state) => state.deleteAttendance);
+  const roadmapItems = useManageStore((state) => state.roadmapItems);
+  const addRoadmapItem = useManageStore((state) => state.addRoadmapItem);
+  const updateRoadmapItem = useManageStore((state) => state.updateRoadmapItem);
+  const deleteRoadmapItem = useManageStore((state) => state.deleteRoadmapItem);
+  const addWeekToRoadmap = useManageStore((state) => state.addWeekToRoadmap);
+  const addSubTopicToWeek = useManageStore((state) => state.addSubTopicToWeek);
+  const toggleSubTopicComplete = useManageStore(
+    (state) => state.toggleSubTopicComplete
+  );
+  const deleteSubTopic = useManageStore((state) => state.deleteSubTopic);
+  const setCurrentWeek = useManageStore((state) => state.setCurrentWeek);
 
   // Debug log
   useEffect(() => {
@@ -60,7 +71,15 @@ const Administrator = () => {
     console.log("Administrator - Exercises:", exercises);
     console.log("Administrator - Projects:", projects);
     console.log("Administrator - Attendance:", attendance);
-  }, [announcements, assignments, exercises, projects, attendance]);
+    console.log("Administrator - Roadmap Items:", roadmapItems);
+  }, [
+    announcements,
+    assignments,
+    exercises,
+    projects,
+    attendance,
+    roadmapItems,
+  ]);
 
   const [recentStudents] = useState([
     {
@@ -315,6 +334,7 @@ const Administrator = () => {
           alert("Please fill in all required fields.");
           return;
         }
+        Witryna;
         const points = parseInt(formData.points);
         if (isNaN(points) || points <= 0) {
           alert("Please enter a valid number of points.");
@@ -391,6 +411,71 @@ const Administrator = () => {
           studentId: parseInt(formData.studentId),
         });
         alert("Attendance record updated successfully!");
+        break;
+      }
+      case "roadmap": {
+        if (!formData.phase || !formData.term || !formData.status) {
+          alert("Please fill in all required fields (Phase, Term, Status).");
+          return;
+        }
+        const newRoadmapItem = {
+          id: newId(roadmapItems),
+          phase: formData.phase,
+          term: formData.term,
+          status: formData.status,
+          weeks: [],
+        };
+        addRoadmapItem(newRoadmapItem);
+        alert("Roadmap item added successfully!");
+        break;
+      }
+      case "roadmap-edit": {
+        if (!formData.phase || !formData.term || !formData.status) {
+          alert("Please fill in all required fields (Phase, Term, Status).");
+          return;
+        }
+        updateRoadmapItem(formData.id, {
+          phase: formData.phase,
+          term: formData.term,
+          status: formData.status,
+        });
+        alert("Roadmap item updated successfully!");
+        break;
+      }
+      case "week": {
+        if (!formData.roadmapId || !formData.weekNumber || !formData.topic) {
+          alert(
+            "Please fill in all required fields (Roadmap ID, Week Number, Topic)."
+          );
+          return;
+        }
+        const weekNumber = parseInt(formData.weekNumber);
+        if (isNaN(weekNumber) || weekNumber <= 0) {
+          alert("Please enter a valid week number.");
+          return;
+        }
+        addWeekToRoadmap(formData.roadmapId, weekNumber, formData.topic);
+        alert("Week added successfully!");
+        break;
+      }
+      case "subtopic": {
+        if (
+          !formData.roadmapId ||
+          !formData.weekIndex ||
+          !formData.subTopicName
+        ) {
+          alert(
+            "Please fill in all required fields (Roadmap ID, Week Index, Subtopic Name)."
+          );
+          return;
+        }
+        const weekIndex = parseInt(formData.weekIndex);
+        if (isNaN(weekIndex) || weekIndex < 0) {
+          alert("Please enter a valid week index.");
+          return;
+        }
+        addSubTopicToWeek(formData.roadmapId, weekIndex, formData.subTopicName);
+        alert("Subtopic added successfully!");
         break;
       }
       default:
@@ -484,6 +569,16 @@ const Administrator = () => {
     setSelectedForm("attendance-edit");
   };
 
+  const handleEditRoadmapItem = (roadmapItem) => {
+    setFormData({
+      id: roadmapItem.id,
+      phase: roadmapItem.phase,
+      term: roadmapItem.term,
+      status: roadmapItem.status,
+    });
+    setSelectedForm("roadmap-edit");
+  };
+
   const handleDeleteAssignment = (assignmentId) => {
     if (window.confirm("Are you sure you want to delete this assignment?")) {
       deleteAssignment(assignmentId);
@@ -513,37 +608,56 @@ const Administrator = () => {
       alert("Attendance record deleted successfully!");
     }
   };
-const handleGradeSubmit = (id, type) => {
-  const grade = parseFloat(formData[id]);
-  let item;
 
-  // Find the item first before validation
-  if (type === "assignment") {
-    item = assignments.find((a) => a.id === id);
-  } else if (type === "exercise") {
-    item = exercises.find((e) => e.id === id);
-  } else if (type === "project") {
-    item = projects.find((p) => p.id === id);
-  }
+  const handleDeleteRoadmapItem = (roadmapId) => {
+    if (window.confirm("Are you sure you want to delete this roadmap item?")) {
+      deleteRoadmapItem(roadmapId);
+      alert("Roadmap item deleted successfully!");
+    }
+  };
 
-  // Validate grade before updating
-  if (isNaN(grade) || grade < 0 || grade > item.points) {
-    alert(`Please enter a valid grade between 0 and ${item.points} points.`);
-    return;
-  }
+  const handleGradeSubmit = (id, type) => {
+    const grade = parseFloat(formData[id]);
+    let item;
+    if (type === "assignment") {
+      item = assignments.find((a) => a.id === id);
+    } else if (type === "exercise") {
+      item = exercises.find((e) => e.id === id);
+    } else if (type === "project") {
+      item = projects.find((p) => p.id === id);
+    }
+    if (isNaN(grade) || grade < 0 || grade > item.points) {
+      alert(`Please enter a valid grade between 0 and ${item.points} points.`);
+      return;
+    }
+    if (type === "assignment") {
+      updateAssignment(id, { status: "graded", grade });
+    } else if (type === "exercise") {
+      updateExercise(id, { status: "graded", grade });
+    } else if (type === "project") {
+      updateProject(id, { status: "graded", grade });
+    }
+    setFormData((prev) => ({ ...prev, [id]: "" }));
+    alert("Grade submitted successfully!");
+  };
 
-  // Update status only after validation
-  if (type === "assignment") {
-    updateAssignment(id, { status: "graded", grade });
-  } else if (type === "exercise") {
-    updateExercise(id, { status: "graded", grade });
-  } else if (type === "project") {
-    updateProject(id, { status: "graded", grade });
-  }
+  const handleSetCurrentWeek = (roadmapId, weekIndex) => {
+    setCurrentWeek(roadmapId, weekIndex);
+    alert("Current week set successfully!");
+  };
 
-  setFormData((prev) => ({ ...prev, [id]: "" }));
-  alert("Grade submitted successfully!");
-};
+  const handleToggleSubTopicComplete = (roadmapId, weekIndex, subTopicId) => {
+    toggleSubTopicComplete(roadmapId, weekIndex, subTopicId);
+    alert("Subtopic completion status toggled!");
+  };
+
+  const handleDeleteSubTopic = (roadmapId, weekIndex, subTopicId) => {
+    if (window.confirm("Are you sure you want to delete this subtopic?")) {
+      deleteSubTopic(roadmapId, weekIndex, subTopicId);
+      alert("Subtopic deleted successfully!");
+    }
+  };
+
   const filteredAssignments =
     activeTab === "assignments"
       ? assignments.filter(
@@ -591,6 +705,15 @@ const handleGradeSubmit = (id, type) => {
               .includes(searchTerm.toLowerCase())
         )
       : attendance;
+
+  const filteredRoadmapItems =
+    activeTab === "roadmap"
+      ? roadmapItems.filter(
+          (r) =>
+            r.phase.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            r.term.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : roadmapItems;
 
   const renderForm = () => {
     switch (selectedForm) {
@@ -944,6 +1067,143 @@ const handleGradeSubmit = (id, type) => {
             </div>
           </div>
         );
+      case "roadmap":
+      case "roadmap-edit":
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Phase *
+              </label>
+              <input
+                type="text"
+                value={formData.phase || ""}
+                onChange={(e) => handleFormChange("phase", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">Term *</label>
+              <input
+                type="text"
+                value={formData.term || ""}
+                onChange={(e) => handleFormChange("term", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Status *
+              </label>
+              <select
+                value={formData.status || ""}
+                onChange={(e) => handleFormChange("status", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              >
+                <option value="">Select Status</option>
+                <option value="not-started">Not Started</option>
+                <option value="in-progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+          </div>
+        );
+      case "week":
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Roadmap ID *
+              </label>
+              <input
+                type="number"
+                value={formData.roadmapId || ""}
+                onChange={(e) => handleFormChange("roadmapId", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+              <p className="text-gray-500 text-xs mt-1">
+                Enter the ID of the roadmap to add the week to.
+              </p>
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Week Number *
+              </label>
+              <input
+                type="number"
+                value={formData.weekNumber || ""}
+                onChange={(e) => handleFormChange("weekNumber", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Topic *
+              </label>
+              <input
+                type="text"
+                value={formData.topic || ""}
+                onChange={(e) => handleFormChange("topic", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+          </div>
+        );
+      case "subtopic":
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Roadmap ID *
+              </label>
+              <input
+                type="number"
+                value={formData.roadmapId || ""}
+                onChange={(e) => handleFormChange("roadmapId", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+              <p className="text-gray-500 text-xs mt-1">
+                Enter the ID of the roadmap containing the week.
+              </p>
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Week Index *
+              </label>
+              <input
+                type="number"
+                value={formData.weekIndex || ""}
+                onChange={(e) => handleFormChange("weekIndex", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+              <p className="text-gray-500 text-xs mt-1">
+                Enter the index of the week (0-based) to add the subtopic to.
+              </p>
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Subtopic Name *
+              </label>
+              <input
+                type="text"
+                value={formData.subTopicName || ""}
+                onChange={(e) =>
+                  handleFormChange("subTopicName", e.target.value)
+                }
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -958,7 +1218,8 @@ const handleGradeSubmit = (id, type) => {
             Administrator Dashboard
           </h1>
           <p className="text-gray-400 mt-2">
-            Manage students, assignments, exercises, and system settings
+            Manage students, assignments, exercises, roadmap, and system
+            settings
           </p>
         </div>
         <div className="flex items-center space-x-3 flex-wrap gap-2">
@@ -981,6 +1242,9 @@ const handleGradeSubmit = (id, type) => {
             <option value="project">New Project</option>
             <option value="event">New Event</option>
             <option value="attendance">New Attendance</option>
+            <option value="roadmap">New Roadmap Item</option>
+            <option value="week">New Week</option>
+            <option value="subtopic">New Subtopic</option>
           </select>
           <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2">
             <Settings className="w-4 h-4" />
@@ -1007,6 +1271,10 @@ const handleGradeSubmit = (id, type) => {
                   (formData.id ? "Edit Event" : "New Event")}
                 {selectedForm === "attendance" && "New Attendance"}
                 {selectedForm === "attendance-edit" && "Edit Attendance"}
+                {selectedForm === "roadmap" && "New Roadmap Item"}
+                {selectedForm === "roadmap-edit" && "Edit Roadmap Item"}
+                {selectedForm === "week" && "New Week"}
+                {selectedForm === "subtopic" && "New Subtopic"}
               </h2>
               <button
                 onClick={() => {
@@ -1122,6 +1390,16 @@ const handleGradeSubmit = (id, type) => {
             }`}
           >
             Attendance
+          </button>
+          <button
+            onClick={() => setActiveTab("roadmap")}
+            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+              activeTab === "roadmap"
+                ? "bg-yellow-500 text-gray-900"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            Roadmap
           </button>
         </div>
       </div>
@@ -1779,6 +2057,197 @@ const handleGradeSubmit = (id, type) => {
                         onClick={() => handleDeleteAttendance(record.id)}
                         className="text-red-500 hover:text-red-400"
                         title="Delete Attendance"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Roadmap Tab */}
+      {activeTab === "roadmap" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
+              <Map className="w-5 h-5 text-yellow-500" />
+              <span>All Roadmap Items</span>
+            </h3>
+            <button
+              onClick={() => {
+                setSelectedForm("roadmap");
+                setFormData({});
+              }}
+              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+            >
+              New Roadmap Item
+            </button>
+          </div>
+          <input
+            type="text"
+            placeholder="Search roadmap items..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+          />
+          {filteredRoadmapItems.length === 0 ? (
+            <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+              <p className="text-gray-400 text-lg">No roadmap items yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredRoadmapItems.map((roadmap) => (
+                <div
+                  key={roadmap.id}
+                  className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h4 className="text-white font-semibold text-lg mb-2">
+                        {roadmap.phase} - {roadmap.term}
+                      </h4>
+                      <div className="flex items-center space-x-4 text-sm mb-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            roadmap.status === "completed"
+                              ? "bg-green-500 text-white"
+                              : roadmap.status === "in-progress"
+                              ? "bg-blue-500 text-white"
+                              : "bg-gray-500 text-white"
+                          }`}
+                        >
+                          {roadmap.status.toUpperCase()}
+                        </span>
+                      </div>
+                      {roadmap.weeks && roadmap.weeks.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                          <h5 className="text-gray-400 text-sm font-semibold">
+                            Weeks:
+                          </h5>
+                          {roadmap.weeks.map((week, weekIndex) => (
+                            <div
+                              key={weekIndex}
+                              className="bg-gray-900 rounded-lg p-4 border border-gray-700"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <h6 className="text-white font-semibold">
+                                  Week {week.weekNumber}: {week.topic}
+                                </h6>
+                                <button
+                                  onClick={() =>
+                                    handleSetCurrentWeek(roadmap.id, weekIndex)
+                                  }
+                                  className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+                                    week.isCurrent
+                                      ? "bg-yellow-500 text-gray-900"
+                                      : "bg-gray-700 text-white hover:bg-gray-600"
+                                  }`}
+                                >
+                                  {week.isCurrent
+                                    ? "Current Week"
+                                    : "Set as Current"}
+                                </button>
+                              </div>
+                              {week.subTopics && week.subTopics.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                  {week.subTopics.map((subTopic) => (
+                                    <div
+                                      key={subTopic.id}
+                                      className="flex items-center justify-between bg-gray-800 rounded-lg p-3"
+                                    >
+                                      <div className="flex items-center space-x-3">
+                                        <input
+                                          type="checkbox"
+                                          checked={subTopic.completed}
+                                          onChange={() =>
+                                            handleToggleSubTopicComplete(
+                                              roadmap.id,
+                                              weekIndex,
+                                              subTopic.id
+                                            )
+                                          }
+                                          className="w-4 h-4"
+                                        />
+                                        <span
+                                          className={`text-sm ${
+                                            subTopic.completed
+                                              ? "text-gray-500 line-through"
+                                              : "text-white"
+                                          }`}
+                                        >
+                                          {subTopic.name}
+                                        </span>
+                                      </div>
+                                      <button
+                                        onClick={() =>
+                                          handleDeleteSubTopic(
+                                            roadmap.id,
+                                            weekIndex,
+                                            subTopic.id
+                                          )
+                                        }
+                                        className="text-red-500 hover:text-red-400"
+                                        title="Delete Subtopic"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setSelectedForm("subtopic");
+                                  setFormData({
+                                    roadmapId: roadmap.id,
+                                    weekIndex,
+                                  });
+                                }}
+                                className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                              >
+                                Add Subtopic
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            onClick={() => {
+                              setSelectedForm("week");
+                              setFormData({ roadmapId: roadmap.id });
+                            }}
+                            className="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                          >
+                            Add Week
+                          </button>
+                        </div>
+                      )}
+                      {(!roadmap.weeks || roadmap.weeks.length === 0) && (
+                        <button
+                          onClick={() => {
+                            setSelectedForm("week");
+                            setFormData({ roadmapId: roadmap.id });
+                          }}
+                          className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                        >
+                          Add First Week
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-3 ml-4">
+                      <button
+                        onClick={() => handleEditRoadmapItem(roadmap)}
+                        className="text-yellow-500 hover:text-yellow-400"
+                        title="Edit Roadmap Item"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRoadmapItem(roadmap.id)}
+                        className="text-red-500 hover:text-red-400"
+                        title="Delete Roadmap Item"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
