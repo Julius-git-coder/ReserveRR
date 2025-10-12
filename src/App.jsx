@@ -31,7 +31,7 @@ import Grading from "../Pages/Grading";
 import DaysOfLearning from "../Pages/DaysOfLearning";
 import RoadMap from "../Pages/RoadMap";
 import ClassMaterials from "../Pages/ClassMaterials";
-import ResourceLibrary from "../Pages/ResourceLibrary";
+
 import Directory from "../Pages/Directory";
 import BookSession from "../Pages/BookSections";
 import WorkReady from "../Pages/WorkReady";
@@ -58,10 +58,10 @@ const Sidebar = ({
     { id: "100days", icon: Code, label: "100 Days of Code" },
     { id: "roadmap", icon: Map, label: "Roadmap" },
     { id: "materials", icon: BookOpen, label: "Class Materials" },
-    { id: "resources", icon: Library, label: "Resources Library" },
+
     { id: "directory", icon: BookMarked, label: "Directory" },
     { id: "session", icon: Calendar, label: "Book a Session" },
-    { id: "workready", icon: Briefcase, label: "Work Ready" },
+    { id: "workready", icon: Briefcase, label: "Available Programs" },
     { id: "profile", icon: User, label: "Profile" },
   ];
 
@@ -379,8 +379,6 @@ const Dashboard = () => {
         return <RoadMap />;
       case "materials":
         return <ClassMaterials />;
-      case "resources":
-        return <ResourceLibrary />;
       case "directory":
         return <Directory />;
       case "session":

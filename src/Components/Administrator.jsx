@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from "react";
 import {
   Users,
@@ -13,6 +15,9 @@ import {
   FolderOpen,
   UserCheck,
   Map,
+  Download,
+  ExternalLink,
+  CheckCircle,
 } from "lucide-react";
 import useManageStore from "../Store/useManageStore";
 
@@ -62,6 +67,14 @@ const Administrator = () => {
   );
   const deleteSubTopic = useManageStore((state) => state.deleteSubTopic);
   const setCurrentWeek = useManageStore((state) => state.setCurrentWeek);
+  const classMaterials = useManageStore((state) => state.classMaterials);
+  const addClassMaterial = useManageStore((state) => state.addClassMaterial);
+  const updateClassMaterial = useManageStore(
+    (state) => state.updateClassMaterial
+  );
+  const deleteClassMaterial = useManageStore(
+    (state) => state.deleteClassMaterial
+  );
 
   // Debug log
   useEffect(() => {
@@ -71,6 +84,7 @@ const Administrator = () => {
     console.log("Administrator - Projects:", projects);
     console.log("Administrator - Attendance:", attendance);
     console.log("Administrator - Roadmap Items:", roadmapItems);
+    console.log("Administrator - Class Materials:", classMaterials);
   }, [
     announcements,
     assignments,
@@ -78,6 +92,7 @@ const Administrator = () => {
     projects,
     attendance,
     roadmapItems,
+    classMaterials,
   ]);
 
   const [recentStudents] = useState([
@@ -477,6 +492,56 @@ const Administrator = () => {
         alert("Subtopic added successfully!");
         break;
       }
+      case "classmaterial":
+      case "classmaterial-edit": {
+        if (
+          !formData.title ||
+          !formData.week ||
+          !formData.resources ||
+          !formData.topics
+        ) {
+          alert("Please fill in all required fields.");
+          return;
+        }
+        const weekNum = parseInt(formData.week);
+        const resourcesNum = parseInt(formData.resources);
+        if (
+          isNaN(weekNum) ||
+          weekNum <= 0 ||
+          isNaN(resourcesNum) ||
+          resourcesNum <= 0
+        ) {
+          alert("Please enter valid numbers for week and resources.");
+          return;
+        }
+        const topics = formData.topics
+          .split(",")
+          .map((t) => t.trim())
+          .filter((t) => t);
+        if (topics.length === 0) {
+          alert("Please enter at least one topic.");
+          return;
+        }
+        const materialData = {
+          title: formData.title,
+          week: weekNum,
+          resources: resourcesNum,
+          topics,
+          files: [], // Placeholder for files; can be extended later
+        };
+        if (selectedForm === "classmaterial") {
+          const newMaterial = {
+            id: newId(classMaterials),
+            ...materialData,
+          };
+          addClassMaterial(newMaterial);
+          alert("Class material added successfully! Student will see it now.");
+        } else {
+          updateClassMaterial(formData.id, materialData);
+          alert("Class material updated successfully!");
+        }
+        break;
+      }
       default:
         break;
     }
@@ -578,6 +643,17 @@ const Administrator = () => {
     setSelectedForm("roadmap-edit");
   };
 
+  const handleEditClassMaterial = (material) => {
+    setFormData({
+      id: material.id,
+      title: material.title,
+      week: material.week,
+      resources: material.resources,
+      topics: material.topics.join(", "),
+    });
+    setSelectedForm("classmaterial-edit");
+  };
+
   const handleDeleteAssignment = (assignmentId) => {
     if (window.confirm("Are you sure you want to delete this assignment?")) {
       deleteAssignment(assignmentId);
@@ -612,6 +688,15 @@ const Administrator = () => {
     if (window.confirm("Are you sure you want to delete this roadmap item?")) {
       deleteRoadmapItem(roadmapId);
       alert("Roadmap item deleted successfully!");
+    }
+  };
+
+  const handleDeleteClassMaterial = (materialId) => {
+    if (
+      window.confirm("Are you sure you want to delete this class material?")
+    ) {
+      deleteClassMaterial(materialId);
+      alert("Class material deleted successfully!");
     }
   };
 
@@ -713,6 +798,13 @@ const Administrator = () => {
             r.term.toLowerCase().includes(searchTerm.toLowerCase())
         )
       : roadmapItems;
+
+  const filteredClassMaterials =
+    activeTab === "classmaterials"
+      ? classMaterials.filter((c) =>
+          c.title.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : classMaterials;
 
   const renderForm = () => {
     switch (selectedForm) {
@@ -1203,6 +1295,59 @@ const Administrator = () => {
             </div>
           </div>
         );
+      case "classmaterial":
+      case "classmaterial-edit":
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Title *
+              </label>
+              <input
+                type="text"
+                value={formData.title || ""}
+                onChange={(e) => handleFormChange("title", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">Week *</label>
+              <input
+                type="number"
+                value={formData.week || ""}
+                onChange={(e) => handleFormChange("week", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Number of Resources *
+              </label>
+              <input
+                type="number"
+                value={formData.resources || ""}
+                onChange={(e) => handleFormChange("resources", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Topics (comma separated) *
+              </label>
+              <textarea
+                value={formData.topics || ""}
+                onChange={(e) => handleFormChange("topics", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                rows="3"
+                placeholder="e.g., JavaScript Basics, React Components"
+                required
+              />
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -1244,6 +1389,7 @@ const Administrator = () => {
             <option value="roadmap">New Roadmap Item</option>
             <option value="week">New Week</option>
             <option value="subtopic">New Subtopic</option>
+            <option value="classmaterial">New Class Material</option>
           </select>
           <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2">
             <Settings className="w-4 h-4" />
@@ -1274,6 +1420,8 @@ const Administrator = () => {
                 {selectedForm === "roadmap-edit" && "Edit Roadmap Item"}
                 {selectedForm === "week" && "New Week"}
                 {selectedForm === "subtopic" && "New Subtopic"}
+                {selectedForm === "classmaterial" && "New Class Material"}
+                {selectedForm === "classmaterial-edit" && "Edit Class Material"}
               </h2>
               <button
                 onClick={() => {
@@ -1399,6 +1547,16 @@ const Administrator = () => {
             }`}
           >
             Roadmap
+          </button>
+          <button
+            onClick={() => setActiveTab("classmaterials")}
+            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+              activeTab === "classmaterials"
+                ? "bg-yellow-500 text-gray-900"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            Class Materials
           </button>
         </div>
       </div>
@@ -2141,12 +2299,12 @@ const Administrator = () => {
                                     handleSetCurrentWeek(roadmap.id, weekIndex)
                                   }
                                   className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                                    week.isCurrent
+                                    week.current
                                       ? "bg-yellow-500 text-gray-900"
                                       : "bg-gray-700 text-white hover:bg-gray-600"
                                   }`}
                                 >
-                                  {week.isCurrent
+                                  {week.current
                                     ? "Current Week"
                                     : "Set as Current"}
                                 </button>
@@ -2247,6 +2405,129 @@ const Administrator = () => {
                         onClick={() => handleDeleteRoadmapItem(roadmap.id)}
                         className="text-red-500 hover:text-red-400"
                         title="Delete Roadmap Item"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Class Materials Tab */}
+      {activeTab === "classmaterials" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
+              <BookOpen className="w-5 h-5 text-yellow-500" />
+              <span>All Class Materials</span>
+            </h3>
+            <button
+              onClick={() => {
+                setSelectedForm("classmaterial");
+                setFormData({});
+              }}
+              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+            >
+              New Class Material
+            </button>
+          </div>
+          <input
+            type="text"
+            placeholder="Search class materials..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+          />
+          {filteredClassMaterials.length === 0 ? (
+            <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+              <p className="text-gray-400 text-lg">No class materials yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredClassMaterials.map((material) => (
+                <div
+                  key={material.id}
+                  className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <BookOpen className="w-6 h-6 text-yellow-500" />
+                        <h4 className="text-white font-semibold text-lg">
+                          {material.title}
+                        </h4>
+                      </div>
+                      <span className="inline-block bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold">
+                        Week {material.week}
+                      </span>
+                      <span className="ml-2 inline-block bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold">
+                        {material.resources} resources
+                      </span>
+                      <div className="space-y-2 mt-4">
+                        <p className="text-gray-400 text-sm font-semibold mb-2">
+                          Topics Covered:
+                        </p>
+                        {material.topics.map((topic, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center space-x-2 text-gray-300"
+                          >
+                            <CheckCircle className="w-4 h-4 text-yellow-500" />
+                            <span>{topic}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {material.files && material.files.length > 0 && (
+                        <div className="border-t border-gray-700 pt-4 mt-4">
+                          <p className="text-gray-400 text-sm font-semibold mb-3">
+                            Downloadable Files:
+                          </p>
+                          <div className="space-y-2">
+                            {material.files.map((file, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between p-3 bg-gray-900 rounded-lg"
+                              >
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-10 h-10 bg-yellow-500 rounded flex items-center justify-center">
+                                    <span className="text-gray-900 text-xs font-bold">
+                                      {file.type}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <p className="text-white font-medium">
+                                      {file.name}
+                                    </p>
+                                    <p className="text-gray-400 text-xs">
+                                      {file.size}
+                                    </p>
+                                  </div>
+                                </div>
+                                <button className="text-yellow-500 hover:text-yellow-400 transition-colors">
+                                  <Download className="w-5 h-5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-3 ml-4">
+                      <button
+                        onClick={() => handleEditClassMaterial(material)}
+                        className="text-yellow-500 hover:text-yellow-400"
+                        title="Edit Class Material"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClassMaterial(material.id)}
+                        className="text-red-500 hover:text-red-400"
+                        title="Delete Class Material"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>

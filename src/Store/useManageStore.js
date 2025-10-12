@@ -1,6 +1,5 @@
 
 
-
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -408,6 +407,16 @@ const useManageStore = create(
       addClassMaterial: (material) =>
         set((state) => ({
           classMaterials: [material, ...state.classMaterials],
+        })),
+      updateClassMaterial: (id, updatedMaterial) =>
+        set((state) => ({
+          classMaterials: state.classMaterials.map((m) =>
+            m.id === id ? { ...m, ...updatedMaterial } : m
+          ),
+        })),
+      deleteClassMaterial: (id) =>
+        set((state) => ({
+          classMaterials: state.classMaterials.filter((m) => m.id !== id),
         })),
 
       // State for Campus Connect Posts
