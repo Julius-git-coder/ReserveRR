@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   User,
@@ -7,41 +7,38 @@ import {
   MessageSquare,
   UserPlus,
   Users,
+  Clock,
+  RefreshCw, // New: For reset button
 } from "lucide-react";
-import useManageStore from "../src/Store/useManageStore";
+import useManageStore from "../src/Store/useManageStore"; // Adjust path if needed
 
-// Simple Chat Modal Component
+// Simple Chat Modal Component - Full screen (unchanged)
 const ChatModal = ({ onClose, otherUser, currentUser }) => {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      senderId: otherUser.id,
-      text: "Hello! How can I help you today?",
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: 2,
-      senderId: currentUser.id,
-      text: "Hi, I have a question about the assignment.",
-      timestamp: new Date().toISOString(),
-    },
-  ]);
   const [newMessage, setNewMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const { conversations, addMessage } = useManageStore();
+
+  const convKey = [
+    Math.min(currentUser.id, otherUser.id),
+    Math.max(currentUser.id, otherUser.id),
+  ].join("-");
+
+  useEffect(() => {
+    setMessages(conversations[convKey] || []);
+  }, [conversations, convKey]);
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (newMessage.trim()) {
-      setMessages([
-        ...messages,
-        {
-          id: messages.length + 1,
-          senderId: currentUser.id,
-          text: newMessage,
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      const message = {
+        id: Date.now(),
+        senderId: currentUser.id,
+        text: newMessage,
+        timestamp: new Date().toISOString(),
+      };
+      addMessage(currentUser.id, otherUser.id, currentUser.id, newMessage);
+      setMessages((prev) => [...prev, message]);
       setNewMessage("");
-      // In a real app, send to backend/WebSocket
     }
   };
 
@@ -128,43 +125,182 @@ const Directory = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const {
-    directory,
-    friends,
+    directory: storeDirectory,
+    friendRequests,
     sendFriendRequest,
-    acceptFriendRequest,
-    conversations,
   } = useManageStore();
 
-  const currentUser = { id: 1, name: "Julius Dagana" }; // Hardcoded for demo
+  const currentUser = { id: 1, name: "Julius Dagana" };
 
+  // FIXED FALLBACK: Trigger if empty array or null/undefined
+  const fallbackDirectory = [
+    {
+      id: 1,
+      name: "Julius Dagana",
+      email: "julius@example.com",
+      role: "Student",
+      github: "juliusdagana",
+      cohort: "2024-B",
+    },
+    {
+      id: 2,
+      name: "Admin",
+      email: "admin@gradea.com",
+      role: "Administrator",
+      github: "admin",
+      cohort: "Staff",
+    },
+    {
+      id: 3,
+      name: "Instructor Smith",
+      email: "smith@example.com",
+      role: "Instructor",
+      github: "smith",
+      specialty: "Web Development",
+    },
+    {
+      id: 4,
+      name: "TA John",
+      email: "john@example.com",
+      role: "Teaching Assistant",
+      github: "johnTA",
+      cohort: "2024-A",
+    },
+  ];
+  const directory =
+    storeDirectory && storeDirectory.length > 0
+      ? storeDirectory
+      : fallbackDirectory;
+
+  // Synchronous filter (instant results)
   const filteredPeople = directory.filter(
     (person) =>
       person.id !== currentUser.id &&
-      (person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        person.role.toLowerCase().includes(searchTerm.toLowerCase()))
+      (person.name.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
+        person.role.toLowerCase().includes(searchTerm.toLowerCase().trim()))
   );
 
-  const isFriend = (personId) => friends.includes(personId);
-  const hasPendingRequest = (personId) =>
-    /* Assume store has pendingFriendRequests */ false; // Placeholder
+  // Debug log on every render
+  console.log(
+    "Rendering Directory - Store length:",
+    storeDirectory?.length || 0,
+    "Using fallback?",
+    !(storeDirectory && storeDirectory.length > 0),
+    "Directory length:",
+    directory.length,
+    "Search:",
+    searchTerm,
+    "Filtered length:",
+    filteredPeople.length
+  );
+
+  // Debug on mount
+  useEffect(() => {
+    console.log("Directory mounted - Store directory:", storeDirectory);
+    if (!(storeDirectory && storeDirectory.length > 0)) {
+      console.warn(
+        "Using fallback directory (store was empty). Click 'Reset Store' to clear localStorage."
+      );
+    }
+  }, [storeDirectory]);
+
+  // Reset store function (for testing)
+  const resetStore = () => {
+    localStorage.removeItem("manage-store");
+    window.location.reload();
+  };
+
+  const getFriends = (userId) =>
+    friendRequests
+      .filter(
+        (r) =>
+          (r.fromId === userId || r.toId === userId) && r.status === "accepted"
+      )
+      .map((r) => (r.fromId === userId ? r.toId : r.fromId));
+
+  const getPendingOutgoing = (userId) =>
+    friendRequests
+      .filter((r) => r.fromId === userId && r.status === "pending")
+      .map((r) => r.toId);
+
+  const isFriend = (personId) => getFriends(currentUser.id).includes(personId);
+
+  const hasPendingOutgoing = (personId) =>
+    getPendingOutgoing(currentUser.id).includes(personId);
 
   const handleSendRequest = (personId) => {
-    sendFriendRequest(currentUser.id, personId);
-    alert("Friend request sent!");
+    if (!isFriend(personId) && !hasPendingOutgoing(personId)) {
+      sendFriendRequest(currentUser.id, personId);
+      alert("Friend request sent!");
+    }
   };
 
   const handleMessage = (person) => {
-    setSelectedUser(person);
-    setIsChatOpen(true);
+    if (isFriend(person.id)) {
+      setSelectedUser(person);
+      setIsChatOpen(true);
+    } else {
+      alert(
+        "You must be friends to message. Friend request pending or send one first."
+      );
+    }
+  };
+
+  const getButtonText = (personId) => {
+    if (isFriend(personId)) return "Message";
+    if (hasPendingOutgoing(personId)) return "Pending";
+    return "Send Friend Request";
+  };
+
+  const getButtonProps = (personId) => {
+    const person = directory.find((p) => p.id === personId);
+    if (!person) {
+      console.error("Person not found for ID:", personId);
+      return {
+        disabled: true,
+        className: "bg-gray-500 text-gray-300 cursor-not-allowed",
+        icon: Clock,
+      };
+    }
+
+    if (isFriend(personId)) {
+      return {
+        onClick: () => handleMessage(person),
+        className: "bg-blue-500 hover:bg-blue-600 text-white",
+        icon: MessageSquare,
+      };
+    } else if (hasPendingOutgoing(personId)) {
+      return {
+        disabled: true,
+        className: "bg-gray-500 text-gray-300 cursor-not-allowed",
+        icon: Clock,
+      };
+    } else {
+      return {
+        onClick: () => handleSendRequest(personId),
+        className: "bg-green-500 hover:bg-green-600 text-white",
+        icon: UserPlus,
+      };
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-white text-3xl font-bold">Directory</h1>
-        <p className="text-gray-400 mt-2">
-          Connect with classmates and instructors
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-white text-3xl font-bold">Directory</h1>
+          <p className="text-gray-400 mt-2">
+            Connect with classmates and instructors ({directory.length} total
+            users)
+          </p>
+        </div>
+        <button
+          onClick={resetStore}
+          className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold flex items-center space-x-2"
+        >
+          <RefreshCw className="w-4 h-4" />
+          <span>Reset Store</span>
+        </button>
       </div>
 
       <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
@@ -172,7 +308,7 @@ const Directory = () => {
           <Search className="w-5 h-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Search directory..."
+            placeholder="Search directory... (try 'Admin')"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="flex-1 bg-transparent text-white placeholder-gray-400 outline-none"
@@ -181,78 +317,78 @@ const Directory = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredPeople.map((person, index) => (
-          <div
-            key={index}
-            className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-gray-600 transition-colors"
-          >
-            <div className="flex items-start space-x-4">
-              <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="w-8 h-8 text-gray-400" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-white font-semibold text-lg">
-                    {person.name}
-                  </h3>
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      person.role === "Instructor"
-                        ? "bg-yellow-500 text-gray-900"
-                        : person.role === "Teaching Assistant"
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-700 text-gray-300"
-                    }`}
+        {filteredPeople.map((person) => {
+          const buttonProps = getButtonProps(person.id);
+          const ButtonIcon = buttonProps.icon || UserPlus;
+          return (
+            <div
+              key={person.id}
+              className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-gray-600 transition-colors"
+            >
+              <div className="flex items-start space-x-4">
+                <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="w-8 h-8 text-gray-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-white font-semibold text-lg">
+                      {person.name}
+                    </h3>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        person.role === "Instructor"
+                          ? "bg-yellow-500 text-gray-900"
+                          : person.role === "Teaching Assistant"
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-700 text-gray-300"
+                      }`}
+                    >
+                      {person.role}
+                    </span>
+                  </div>
+                  <p className="text-gray-400 text-sm mb-3">
+                    {person.cohort || person.specialty}
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2 text-sm text-gray-400">
+                      <Mail className="w-4 h-4" />
+                      <span>{person.email}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-gray-400">
+                      <Github className="w-4 h-4" />
+                      <span>{person.github}</span>
+                    </div>
+                  </div>
+                  <button
+                    {...buttonProps}
+                    className={`mt-4 w-full py-2 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 ${buttonProps.className}`}
+                    disabled={buttonProps.disabled}
                   >
-                    {person.role}
-                  </span>
+                    <ButtonIcon className="w-4 h-4" />
+                    <span>{getButtonText(person.id)}</span>
+                  </button>
                 </div>
-                <p className="text-gray-400 text-sm mb-3">
-                  {person.cohort || person.specialty}
-                </p>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2 text-sm text-gray-400">
-                    <Mail className="w-4 h-4" />
-                    <span>{person.email}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-400">
-                    <Github className="w-4 h-4" />
-                    <span>{person.github}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() =>
-                    isFriend(person.id)
-                      ? handleMessage(person)
-                      : handleSendRequest(person.id)
-                  }
-                  className={`mt-4 w-full py-2 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 ${
-                    isFriend(person.id)
-                      ? "bg-blue-500 hover:bg-blue-600 text-white"
-                      : "bg-green-500 hover:bg-green-600 text-white"
-                  }`}
-                >
-                  {isFriend(person.id) ? (
-                    <>
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Message</span>
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4" />
-                      <span>Send Friend Request</span>
-                    </>
-                  )}
-                </button>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {filteredPeople.length === 0 && (
+      {filteredPeople.length === 0 && searchTerm.trim() && (
         <div className="text-center py-12">
-          <p className="text-gray-400">No results found.</p>
+          <p className="text-gray-400">
+            No results found for "{searchTerm}". Directory has{" "}
+            {directory.length} users—try "Admin", "Instructor", or clear search.
+            Check console for details.
+          </p>
+        </div>
+      )}
+      {searchTerm.trim() === "" && (
+        <div className="text-center py-12 text-gray-400">
+          <p>
+            Start typing to search (e.g., "Admin" for the administrator). Total
+            users: {directory.length}.
+          </p>
         </div>
       )}
 
