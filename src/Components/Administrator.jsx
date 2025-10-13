@@ -1,26 +1,10 @@
+// Administrator.jsx
 import React, { useState, useEffect } from "react";
-import {
-  Users,
-  BookOpen,
-  TrendingUp,
-  Bell,
-  Calendar,
-  Edit,
-  Trash2,
-  Settings,
-  X,
-  Dumbbell,
-  FolderOpen,
-  UserCheck,
-  Map,
-  Download,
-  ExternalLink,
-  CheckCircle,
-  Briefcase,
-  Target,
-  Award,
-} from "lucide-react";
+import { Users, BookOpen, TrendingUp } from "lucide-react";
 import useManageStore from "../Store/useManageStore";
+import Admini from "./Admini";
+import Administra from "./Administra";
+import Adminis from "./Adminis";
 
 const Administrator = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,8 +12,18 @@ const Administrator = () => {
   const [selectedForm, setSelectedForm] = useState("");
   const [formData, setFormData] = useState({});
 
-  // Use selector pattern for better performance
+  // Store selectors
   const announcements = useManageStore((state) => state.announcements);
+  const events = useManageStore((state) => state.events);
+  const assignments = useManageStore((state) => state.assignments);
+  const exercises = useManageStore((state) => state.exercises);
+  const projects = useManageStore((state) => state.projects);
+  const attendance = useManageStore((state) => state.attendance);
+  const roadmapItems = useManageStore((state) => state.roadmapItems);
+  const classMaterials = useManageStore((state) => state.classMaterials);
+  const programs = useManageStore((state) => state.programs);
+
+  // Store actions
   const addAnnouncement = useManageStore((state) => state.addAnnouncement);
   const updateAnnouncement = useManageStore(
     (state) => state.updateAnnouncement
@@ -37,27 +31,21 @@ const Administrator = () => {
   const deleteAnnouncement = useManageStore(
     (state) => state.deleteAnnouncement
   );
-  const events = useManageStore((state) => state.events);
   const addEvent = useManageStore((state) => state.addEvent);
   const updateEvent = useManageStore((state) => state.updateEvent);
   const deleteEvent = useManageStore((state) => state.deleteEvent);
-  const assignments = useManageStore((state) => state.assignments);
   const addAssignment = useManageStore((state) => state.addAssignment);
   const updateAssignment = useManageStore((state) => state.updateAssignment);
   const deleteAssignment = useManageStore((state) => state.deleteAssignment);
-  const exercises = useManageStore((state) => state.exercises);
   const addExercise = useManageStore((state) => state.addExercise);
   const updateExercise = useManageStore((state) => state.updateExercise);
   const deleteExercise = useManageStore((state) => state.deleteExercise);
-  const projects = useManageStore((state) => state.projects);
   const addProject = useManageStore((state) => state.addProject);
   const updateProject = useManageStore((state) => state.updateProject);
   const deleteProject = useManageStore((state) => state.deleteProject);
-  const attendance = useManageStore((state) => state.attendance);
   const addAttendance = useManageStore((state) => state.addAttendance);
   const updateAttendance = useManageStore((state) => state.updateAttendance);
   const deleteAttendance = useManageStore((state) => state.deleteAttendance);
-  const roadmapItems = useManageStore((state) => state.roadmapItems);
   const addRoadmapItem = useManageStore((state) => state.addRoadmapItem);
   const updateRoadmapItem = useManageStore((state) => state.updateRoadmapItem);
   const deleteRoadmapItem = useManageStore((state) => state.deleteRoadmapItem);
@@ -68,7 +56,6 @@ const Administrator = () => {
   );
   const deleteSubTopic = useManageStore((state) => state.deleteSubTopic);
   const setCurrentWeek = useManageStore((state) => state.setCurrentWeek);
-  const classMaterials = useManageStore((state) => state.classMaterials);
   const addClassMaterial = useManageStore((state) => state.addClassMaterial);
   const updateClassMaterial = useManageStore(
     (state) => state.updateClassMaterial
@@ -76,7 +63,6 @@ const Administrator = () => {
   const deleteClassMaterial = useManageStore(
     (state) => state.deleteClassMaterial
   );
-  const programs = useManageStore((state) => state.programs);
   const addProgram = useManageStore((state) => state.addProgram);
   const updateProgram = useManageStore((state) => state.updateProgram);
   const deleteProgram = useManageStore((state) => state.deleteProgram);
@@ -112,7 +98,7 @@ const Administrator = () => {
     programs,
   ]);
 
-  const [recentStudents] = useState([
+  const recentStudents = [
     {
       id: 1,
       name: "Julius Dagana",
@@ -121,7 +107,7 @@ const Administrator = () => {
       status: "active",
       attendance: 92,
     },
-  ]);
+  ];
 
   const stats = [
     { label: "Total Students", value: "156", icon: Users, color: "yellow" },
@@ -222,6 +208,29 @@ const Administrator = () => {
           time: announcement.time,
         });
         alert("Announcement updated successfully!");
+        break;
+      }
+      case "event": {
+        if (!formData.event || !formData.date || !formData.time) {
+          alert("Please fill in all required fields (Event, Date, and Time).");
+          return;
+        }
+        if (formData.id) {
+          updateEvent(formData.id, {
+            event: formData.event,
+            date: formData.date,
+            time: formData.time,
+          });
+          alert("Event updated successfully!");
+        } else {
+          addEvent({
+            id: newId(events),
+            event: formData.event,
+            date: formData.date,
+            time: formData.time,
+          });
+          alert("Event added successfully!");
+        }
         break;
       }
       case "assignment": {
@@ -379,29 +388,6 @@ const Administrator = () => {
           studentId: parseInt(formData.studentId),
         });
         alert("Project updated successfully!");
-        break;
-      }
-      case "event": {
-        if (!formData.event || !formData.date || !formData.time) {
-          alert("Please fill in all required fields (Event, Date, and Time).");
-          return;
-        }
-        if (formData.id) {
-          updateEvent(formData.id, {
-            event: formData.event,
-            date: formData.date,
-            time: formData.time,
-          });
-          alert("Event updated successfully!");
-        } else {
-          addEvent({
-            id: newId(events),
-            event: formData.event,
-            date: formData.date,
-            time: formData.time,
-          });
-          alert("Event added successfully!");
-        }
         break;
       }
       case "attendance": {
@@ -647,282 +633,31 @@ const Administrator = () => {
     setSelectedForm("announcement-edit");
   };
 
-  const handleGradeChange = (id, value) => {
-    setFormData((prev) => ({ ...prev, [id]: value }));
+  const getFormTitle = (formType, hasId) => {
+    const titles = {
+      announcement: "New Announcement",
+      "announcement-edit": "Edit Announcement",
+      assignment: "New Assignment",
+      "assignment-edit": "Edit Assignment",
+      exercise: "New Exercise",
+      "exercise-edit": "Edit Exercise",
+      project: "New Project",
+      "project-edit": "Edit Project",
+      event: hasId ? "Edit Event" : "New Event",
+      attendance: "New Attendance",
+      "attendance-edit": "Edit Attendance",
+      roadmap: "New Roadmap Item",
+      "roadmap-edit": "Edit Roadmap Item",
+      week: "New Week",
+      subtopic: "New Subtopic",
+      classmaterial: "New Class Material",
+      "classmaterial-edit": "Edit Class Material",
+      program: "New Program",
+      "program-edit": "Edit Program",
+      milestone: "New Milestone",
+    };
+    return titles[formType] || "Edit Item";
   };
-
-  const handleMarkSubmitted = (id, type) => {
-    if (type === "assignment") {
-      updateAssignment(id, { status: "submitted" });
-      alert("Assignment marked as submitted!");
-    } else if (type === "exercise") {
-      updateExercise(id, { status: "submitted" });
-      alert("Exercise marked as submitted!");
-    } else if (type === "project") {
-      updateProject(id, { status: "submitted" });
-      alert("Project marked as submitted!");
-    }
-  };
-
-  const handleEditAssignment = (assignment) => {
-    setFormData({
-      id: assignment.id,
-      title: assignment.title,
-      description: assignment.description,
-      dueDate: assignment.dueDate,
-      points: assignment.points,
-      studentId: assignment.studentId,
-    });
-    setSelectedForm("assignment-edit");
-  };
-
-  const handleEditExercise = (exercise) => {
-    setFormData({
-      id: exercise.id,
-      title: exercise.title,
-      description: exercise.description,
-      points: exercise.points,
-      studentId: exercise.studentId,
-    });
-    setSelectedForm("exercise-edit");
-  };
-
-  const handleEditProject = (project) => {
-    setFormData({
-      id: project.id,
-      title: project.title,
-      description: project.description,
-      dueDate: project.dueDate,
-      points: project.points,
-      studentId: project.studentId,
-    });
-    setSelectedForm("project-edit");
-  };
-
-  const handleEditAttendance = (attendance) => {
-    setFormData({
-      id: attendance.id,
-      date: attendance.date,
-      status: attendance.status,
-      topic: attendance.topic,
-      studentId: attendance.studentId,
-    });
-    setSelectedForm("attendance-edit");
-  };
-
-  const handleEditRoadmapItem = (roadmapItem) => {
-    setFormData({
-      id: roadmapItem.id,
-      phase: roadmapItem.phase,
-      term: roadmapItem.term,
-      status: roadmapItem.status,
-    });
-    setSelectedForm("roadmap-edit");
-  };
-
-  const handleEditClassMaterial = (material) => {
-    setFormData({
-      id: material.id,
-      title: material.title,
-      week: material.week,
-      resources: material.resources,
-      topics: material.topics.join(", "),
-    });
-    setSelectedForm("classmaterial-edit");
-  };
-
-  const handleEditProgram = (program) => {
-    setFormData({
-      id: program.id,
-      name: program.name,
-      description: program.description,
-      totalMilestones: program.totalMilestones,
-    });
-    setSelectedForm("program-edit");
-  };
-
-  const handleDeleteAssignment = (assignmentId) => {
-    if (window.confirm("Are you sure you want to delete this assignment?")) {
-      deleteAssignment(assignmentId);
-      alert("Assignment deleted successfully!");
-    }
-  };
-
-  const handleDeleteExercise = (exerciseId) => {
-    if (window.confirm("Are you sure you want to delete this exercise?")) {
-      deleteExercise(exerciseId);
-      alert("Exercise deleted successfully!");
-    }
-  };
-
-  const handleDeleteProject = (projectId) => {
-    if (window.confirm("Are you sure you want to delete this project?")) {
-      deleteProject(projectId);
-      alert("Project deleted successfully!");
-    }
-  };
-
-  const handleDeleteAttendance = (attendanceId) => {
-    if (
-      window.confirm("Are you sure you want to delete this attendance record?")
-    ) {
-      deleteAttendance(attendanceId);
-      alert("Attendance record deleted successfully!");
-    }
-  };
-
-  const handleDeleteRoadmapItem = (roadmapId) => {
-    if (window.confirm("Are you sure you want to delete this roadmap item?")) {
-      deleteRoadmapItem(roadmapId);
-      alert("Roadmap item deleted successfully!");
-    }
-  };
-
-  const handleDeleteClassMaterial = (materialId) => {
-    if (
-      window.confirm("Are you sure you want to delete this class material?")
-    ) {
-      deleteClassMaterial(materialId);
-      alert("Class material deleted successfully!");
-    }
-  };
-
-  const handleDeleteProgram = (programId) => {
-    if (window.confirm("Are you sure you want to delete this program?")) {
-      deleteProgram(programId);
-      alert("Program deleted successfully!");
-    }
-  };
-
-  const handleGradeSubmit = (id, type) => {
-    const grade = parseFloat(formData[id]);
-    let item;
-    if (type === "assignment") {
-      item = assignments.find((a) => a.id === id);
-    } else if (type === "exercise") {
-      item = exercises.find((e) => e.id === id);
-    } else if (type === "project") {
-      item = projects.find((p) => p.id === id);
-    }
-    if (isNaN(grade) || grade < 0 || grade > item.points) {
-      alert(`Please enter a valid grade between 0 and ${item.points} points.`);
-      return;
-    }
-    if (type === "assignment") {
-      updateAssignment(id, { status: "graded", grade });
-    } else if (type === "exercise") {
-      updateExercise(id, { status: "graded", grade });
-    } else if (type === "project") {
-      updateProject(id, { status: "graded", grade });
-    }
-    setFormData((prev) => ({ ...prev, [id]: "" }));
-    alert("Grade submitted successfully!");
-  };
-
-  const handleSetCurrentWeek = (roadmapId, weekIndex) => {
-    setCurrentWeek(roadmapId, weekIndex);
-    alert("Current week set successfully!");
-  };
-
-  const handleToggleSubTopicComplete = (roadmapId, weekIndex, subTopicId) => {
-    toggleSubTopicComplete(roadmapId, weekIndex, subTopicId);
-    alert("Subtopic completion status toggled!");
-  };
-
-  const handleDeleteSubTopic = (roadmapId, weekIndex, subTopicId) => {
-    if (window.confirm("Are you sure you want to delete this subtopic?")) {
-      deleteSubTopic(roadmapId, weekIndex, subTopicId);
-      alert("Subtopic deleted successfully!");
-    }
-  };
-
-  const handleAdminToggleMilestone = (programId, milestoneId) => {
-    adminToggleMilestoneComplete(programId, milestoneId);
-    alert("Milestone completion status updated!");
-  };
-
-  const handleApproveJoin = (programId) => {
-    approveJoinRequest(programId, 1);
-    alert("Join request approved!");
-  };
-
-  const handleRejectJoin = (programId) => {
-    rejectJoinRequest(programId, 1);
-    alert("Join request rejected!");
-  };
-
-  const filteredAssignments =
-    activeTab === "assignments"
-      ? assignments.filter(
-          (a) =>
-            a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            recentStudents
-              .find((s) => s.id === a.studentId)
-              ?.name.toLowerCase()
-              .includes(searchTerm.toLowerCase())
-        )
-      : assignments;
-
-  const filteredExercises =
-    activeTab === "exercises"
-      ? exercises.filter(
-          (e) =>
-            e.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            recentStudents
-              .find((s) => s.id === e.studentId)
-              ?.name.toLowerCase()
-              .includes(searchTerm.toLowerCase())
-        )
-      : exercises;
-
-  const filteredProjects =
-    activeTab === "projects"
-      ? projects.filter(
-          (p) =>
-            p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            recentStudents
-              .find((s) => s.id === p.studentId)
-              ?.name.toLowerCase()
-              .includes(searchTerm.toLowerCase())
-        )
-      : projects;
-
-  const filteredAttendance =
-    activeTab === "attendance"
-      ? attendance.filter(
-          (a) =>
-            a.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            recentStudents
-              .find((s) => s.id === a.studentId)
-              ?.name.toLowerCase()
-              .includes(searchTerm.toLowerCase())
-        )
-      : attendance;
-
-  const filteredRoadmapItems =
-    activeTab === "roadmap"
-      ? roadmapItems.filter(
-          (r) =>
-            r.phase.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            r.term.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      : roadmapItems;
-
-  const filteredClassMaterials =
-    activeTab === "classmaterials"
-      ? classMaterials.filter((c) =>
-          c.title.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      : classMaterials;
-
-  const filteredPrograms =
-    activeTab === "programs"
-      ? programs.filter(
-          (p) =>
-            p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.description.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      : programs;
 
   const renderForm = () => {
     switch (selectedForm) {
@@ -1555,1426 +1290,52 @@ const Administrator = () => {
 
   return (
     <div className="space-y-6 bg-gray-900 min-h-screen p-6">
-      {/* Dashboard Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-white text-3xl font-bold">
-            Administrator Dashboard
-          </h1>
-          <p className="text-gray-400 mt-2">
-            Manage students, assignments, exercises, roadmap, and system
-            settings
-          </p>
-        </div>
-        <div className="flex items-center space-x-3 flex-wrap gap-2">
-          <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2">
-            <Bell className="w-4 h-4" />
-            <span>Notifications</span>
-          </button>
-          <select
-            value={selectedForm}
-            onChange={(e) => {
-              setSelectedForm(e.target.value);
-              setFormData({});
-            }}
-            className="bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700"
-          >
-            <option value="">Select Content Type</option>
-            <option value="announcement">New Announcement</option>
-            <option value="assignment">New Assignment</option>
-            <option value="exercise">New Exercise</option>
-            <option value="project">New Project</option>
-            <option value="event">New Event</option>
-            <option value="attendance">New Attendance</option>
-            <option value="roadmap">New Roadmap Item</option>
-            <option value="week">New Week</option>
-            <option value="subtopic">New Subtopic</option>
-            <option value="classmaterial">New Class Material</option>
-            <option value="program">New Program</option>
-            <option value="milestone">New Milestone</option>
-          </select>
-          <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2">
-            <Settings className="w-4 h-4" />
-            <span>Settings</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Form Modal */}
-      {selectedForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg p-8 border border-gray-700 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-white text-2xl font-bold">
-                {selectedForm === "announcement" && "New Announcement"}
-                {selectedForm === "announcement-edit" && "Edit Announcement"}
-                {selectedForm === "assignment" && "New Assignment"}
-                {selectedForm === "assignment-edit" && "Edit Assignment"}
-                {selectedForm === "exercise" && "New Exercise"}
-                {selectedForm === "exercise-edit" && "Edit Exercise"}
-                {selectedForm === "project" && "New Project"}
-                {selectedForm === "project-edit" && "Edit Project"}
-                {selectedForm === "event" &&
-                  (formData.id ? "Edit Event" : "New Event")}
-                {selectedForm === "attendance" && "New Attendance"}
-                {selectedForm === "attendance-edit" && "Edit Attendance"}
-                {selectedForm === "roadmap" && "New Roadmap Item"}
-                {selectedForm === "roadmap-edit" && "Edit Roadmap Item"}
-                {selectedForm === "week" && "New Week"}
-                {selectedForm === "subtopic" && "New Subtopic"}
-                {selectedForm === "classmaterial" && "New Class Material"}
-                {selectedForm === "classmaterial-edit" && "Edit Class Material"}
-                {selectedForm === "program" && "New Program"}
-                {selectedForm === "program-edit" && "Edit Program"}
-                {selectedForm === "milestone" && "New Milestone"}
-              </h2>
-              <button
-                onClick={() => {
-                  setSelectedForm("");
-                  setFormData({});
-                }}
-                className="text-gray-400 hover:text-white"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleFormSubmit}>
-              {renderForm()}
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedForm("");
-                    setFormData({});
-                  }}
-                  className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-6 py-2 rounded-lg font-semibold"
-                >
-                  Submit
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <div
-            key={index}
-            className="bg-gray-800 rounded-lg p-6 border border-gray-700"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <StatIcon icon={stat.icon} color={stat.color} />
-              <TrendingUp className="w-4 h-4 text-gray-400" />
-            </div>
-            <h3 className="text-white text-3xl font-bold mb-1">{stat.value}</h3>
-            <p className="text-gray-400 text-sm">{stat.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="bg-gray-800 rounded-lg p-2 border border-gray-700">
-        <div className="flex space-x-2 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-              activeTab === "overview"
-                ? "bg-yellow-500 text-gray-900"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab("announcements")}
-            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-              activeTab === "announcements"
-                ? "bg-yellow-500 text-gray-900"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Announcements
-          </button>
-          <button
-            onClick={() => setActiveTab("assignments")}
-            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-              activeTab === "assignments"
-                ? "bg-yellow-500 text-gray-900"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Assignments
-          </button>
-          <button
-            onClick={() => setActiveTab("exercises")}
-            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-              activeTab === "exercises"
-                ? "bg-yellow-500 text-gray-900"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Exercises
-          </button>
-          <button
-            onClick={() => setActiveTab("projects")}
-            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-              activeTab === "projects"
-                ? "bg-yellow-500 text-gray-900"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Projects
-          </button>
-          <button
-            onClick={() => setActiveTab("attendance")}
-            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-              activeTab === "attendance"
-                ? "bg-yellow-500 text-gray-900"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Attendance
-          </button>
-          <button
-            onClick={() => setActiveTab("roadmap")}
-            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-              activeTab === "roadmap"
-                ? "bg-yellow-500 text-gray-900"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Roadmap
-          </button>
-          <button
-            onClick={() => setActiveTab("classmaterials")}
-            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-              activeTab === "classmaterials"
-                ? "bg-yellow-500 text-gray-900"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Class Materials
-          </button>
-          <button
-            onClick={() => setActiveTab("programs")}
-            className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-              activeTab === "programs"
-                ? "bg-yellow-500 text-gray-900"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Programs
-          </button>
-        </div>
-      </div>
-
-      {/* Overview Tab */}
-      {activeTab === "overview" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h3 className="text-white text-lg font-semibold mb-4 flex items-center space-x-2">
-              <Calendar className="w-5 h-5 text-yellow-500" />
-              <span>Upcoming Events</span>
-            </h3>
-            <div className="space-y-3">
-              {events.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-4">
-                  No events scheduled
-                </p>
-              ) : (
-                events.map((event) => (
-                  <div
-                    key={event.id}
-                    className="bg-gray-900 rounded-lg p-4 border border-gray-700"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-white font-semibold">
-                          {event.event}
-                        </h4>
-                        <p className="text-gray-400 text-sm">
-                          {event.date} at {event.time}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEditEvent(event)}
-                          className="text-yellow-500 hover:text-yellow-400"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteEvent(event.id)}
-                          className="text-red-500 hover:text-red-400"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <button
-              onClick={() => {
-                setSelectedForm("event");
-                setFormData({});
-              }}
-              className="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-            >
-              Add Event
-            </button>
-          </div>
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h3 className="text-white text-lg font-semibold mb-4 flex items-center space-x-2">
-              <Bell className="w-5 h-5 text-yellow-500" />
-              <span>Pending Actions</span>
-            </h3>
-            {pendingActions.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-4">
-                No pending actions
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {pendingActions.map((action) => (
-                  <div
-                    key={action.id}
-                    className="bg-gray-900 rounded-lg p-4 border border-gray-700"
-                  >
-                    <p className="text-white font-semibold">{action.type}</p>
-                    <p className="text-gray-400 text-sm">
-                      {action.student} - {action.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Announcements Tab */}
-      {activeTab === "announcements" && (
-        <div className="space-y-4">
-          <h3 className="text-white text-lg font-semibold mb-4 flex items-center space-x-2">
-            <Bell className="w-5 h-5 text-yellow-500" />
-            <span>Announcements</span>
-          </h3>
-          {announcements.length === 0 ? (
-            <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
-              <p className="text-gray-400 text-lg">
-                No announcements available
-              </p>
-            </div>
-          ) : (
-            announcements.map((announcement) => (
-              <div
-                key={announcement.id}
-                className="bg-gray-900 rounded-lg p-4 border border-gray-700"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h4 className="text-white font-semibold">
-                      {announcement.title}
-                    </h4>
-                    <p className="text-gray-400 text-sm">
-                      {announcement.content}
-                    </p>
-                    <p className="text-gray-500 text-xs mt-2">
-                      {announcement.date} at {announcement.time} by{" "}
-                      {announcement.author}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleEditAnnouncement(announcement)}
-                      className="text-yellow-500 hover:text-yellow-400"
-                      title="Edit Announcement"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => deleteAnnouncement(announcement.id)}
-                      className="text-red-500 hover:text-red-400"
-                      title="Delete Announcement"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-          <button
-            onClick={() => {
-              setSelectedForm("announcement");
-              setFormData({});
-            }}
-            className="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-          >
-            Add Announcement
-          </button>
-        </div>
-      )}
-
-      {/* Assignments Tab */}
-      {activeTab === "assignments" && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-white text-lg font-semibold">
-              All Assignments
-            </h3>
-            <button
-              onClick={() => {
-                setSelectedForm("assignment");
-                setFormData({});
-              }}
-              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
-            >
-              New Assignment
-            </button>
-          </div>
-          <input
-            type="text"
-            placeholder="Search assignments..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-          />
-          {filteredAssignments.length === 0 ? (
-            <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
-              <p className="text-gray-400 text-lg">No assignments yet</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredAssignments.map((assignment) => (
-                <div
-                  key={assignment.id}
-                  className="bg-gray-800 rounded-lg p-6 border border-gray-700"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h4 className="text-white font-semibold text-lg mb-2">
-                        {assignment.title}
-                      </h4>
-                      {assignment.description && (
-                        <p className="text-gray-400 text-sm mb-3">
-                          {assignment.description}
-                        </p>
-                      )}
-                      <div className="flex items-center space-x-4 text-sm">
-                        <span className="text-gray-400">
-                          Due: {assignment.dueDate}
-                        </span>
-                        <span className="text-gray-400">
-                          {assignment.points} points
-                        </span>
-                        <span className="text-gray-400">
-                          Student:{" "}
-                          {
-                            recentStudents.find(
-                              (s) => s.id === assignment.studentId
-                            )?.name
-                          }
-                        </span>
-                      </div>
-                      {assignment.createdDate && assignment.createdTime && (
-                        <p className="text-gray-500 text-xs mt-2">
-                          Created: {assignment.createdDate} at{" "}
-                          {assignment.createdTime}
-                        </p>
-                      )}
-                      {assignment.status === "pending" && (
-                        <div className="mt-4 flex items-center space-x-3">
-                          <button
-                            onClick={() =>
-                              handleMarkSubmitted(assignment.id, "assignment")
-                            }
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
-                          >
-                            Mark as Submitted
-                          </button>
-                        </div>
-                      )}
-                      {assignment.status === "submitted" && (
-                        <div className="mt-4 flex items-center space-x-3">
-                          <input
-                            type="number"
-                            value={formData[assignment.id] || ""}
-                            onChange={(e) =>
-                              handleGradeChange(assignment.id, e.target.value)
-                            }
-                            className="w-24 bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-                            placeholder="Grade"
-                          />
-                          <button
-                            onClick={() =>
-                              handleGradeSubmit(assignment.id, "assignment")
-                            }
-                            className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
-                          >
-                            Submit Grade
-                          </button>
-                        </div>
-                      )}
-                      {assignment.status === "graded" && (
-                        <div className="mt-3">
-                          <p className="text-green-400 text-sm font-semibold">
-                            Graded: {assignment.grade}/{assignment.points}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          assignment.status === "graded"
-                            ? "bg-green-500 text-white"
-                            : assignment.status === "submitted"
-                            ? "bg-blue-500 text-white"
-                            : "bg-yellow-500 text-gray-900"
-                        }`}
-                      >
-                        {assignment.status.toUpperCase()}
-                      </span>
-                      <button
-                        onClick={() => handleEditAssignment(assignment)}
-                        className="text-yellow-500 hover:text-yellow-400"
-                        title="Edit Assignment"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteAssignment(assignment.id)}
-                        className="text-red-500 hover:text-red-400"
-                        title="Delete Assignment"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Exercises Tab */}
-      {activeTab === "exercises" && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
-              <Dumbbell className="w-5 h-5 text-yellow-500" />
-              <span>All Exercises</span>
-            </h3>
-            <button
-              onClick={() => {
-                setSelectedForm("exercise");
-                setFormData({});
-              }}
-              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
-            >
-              New Exercise
-            </button>
-          </div>
-          <input
-            type="text"
-            placeholder="Search exercises..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-          />
-          {filteredExercises.length === 0 ? (
-            <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
-              <p className="text-gray-400 text-lg">No exercises yet</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredExercises.map((exercise) => (
-                <div
-                  key={exercise.id}
-                  className="bg-gray-800 rounded-lg p-6 border border-gray-700"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h4 className="text-white font-semibold text-lg mb-2">
-                        {exercise.title}
-                      </h4>
-                      {exercise.description && (
-                        <p className="text-gray-400 text-sm mb-3">
-                          {exercise.description}
-                        </p>
-                      )}
-                      <div className="flex items-center space-x-4 text-sm">
-                        <span className="text-gray-400">
-                          {exercise.points} points
-                        </span>
-                        <span className="text-gray-400">
-                          Student:{" "}
-                          {
-                            recentStudents.find(
-                              (s) => s.id === exercise.studentId
-                            )?.name
-                          }
-                        </span>
-                      </div>
-                      {exercise.createdDate && exercise.createdTime && (
-                        <p className="text-gray-500 text-xs mt-2">
-                          Created: {exercise.createdDate} at{" "}
-                          {exercise.createdTime}
-                        </p>
-                      )}
-                      {exercise.status === "pending" && (
-                        <div className="mt-4 flex items-center space-x-3">
-                          <button
-                            onClick={() =>
-                              handleMarkSubmitted(exercise.id, "exercise")
-                            }
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
-                          >
-                            Mark as Submitted
-                          </button>
-                        </div>
-                      )}
-                      {exercise.status === "submitted" && (
-                        <div className="mt-4 flex items-center space-x-3">
-                          <input
-                            type="number"
-                            value={formData[exercise.id] || ""}
-                            onChange={(e) =>
-                              handleGradeChange(exercise.id, e.target.value)
-                            }
-                            className="w-24 bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-                            placeholder="Grade"
-                          />
-                          <button
-                            onClick={() =>
-                              handleGradeSubmit(exercise.id, "exercise")
-                            }
-                            className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
-                          >
-                            Submit Grade
-                          </button>
-                        </div>
-                      )}
-                      {exercise.status === "graded" && (
-                        <div className="mt-3">
-                          <p className="text-green-400 text-sm font-semibold">
-                            Graded: {exercise.grade}/{exercise.points}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          exercise.status === "graded"
-                            ? "bg-green-500 text-white"
-                            : exercise.status === "submitted"
-                            ? "bg-blue-500 text-white"
-                            : "bg-yellow-500 text-gray-900"
-                        }`}
-                      >
-                        {exercise.status.toUpperCase()}
-                      </span>
-                      <button
-                        onClick={() => handleEditExercise(exercise)}
-                        className="text-yellow-500 hover:text-yellow-400"
-                        title="Edit Exercise"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteExercise(exercise.id)}
-                        className="text-red-500 hover:text-red-400"
-                        title="Delete Exercise"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Projects Tab */}
-      {activeTab === "projects" && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
-              <FolderOpen className="w-5 h-5 text-yellow-500" />
-              <span>All Projects</span>
-            </h3>
-            <button
-              onClick={() => {
-                setSelectedForm("project");
-                setFormData({});
-              }}
-              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
-            >
-              New Project
-            </button>
-          </div>
-          <input
-            type="text"
-            placeholder="Search projects..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-          />
-          {filteredProjects.length === 0 ? (
-            <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
-              <p className="text-gray-400 text-lg">No projects yet</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredProjects.map((project) => (
-                <div
-                  key={project.id}
-                  className="bg-gray-800 rounded-lg p-6 border border-gray-700"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h4 className="text-white font-semibold text-lg mb-2">
-                        {project.title}
-                      </h4>
-                      {project.description && (
-                        <p className="text-gray-400 text-sm mb-3">
-                          {project.description}
-                        </p>
-                      )}
-                      <div className="flex items-center space-x-4 text-sm">
-                        <span className="text-gray-400">
-                          Due: {project.dueDate}
-                        </span>
-                        <span className="text-gray-400">
-                          {project.points} points
-                        </span>
-                        <span className="text-gray-400">
-                          Student:{" "}
-                          {
-                            recentStudents.find(
-                              (s) => s.id === project.studentId
-                            )?.name
-                          }
-                        </span>
-                      </div>
-                      {project.createdDate && project.createdTime && (
-                        <p className="text-gray-500 text-xs mt-2">
-                          Created: {project.createdDate} at{" "}
-                          {project.createdTime}
-                        </p>
-                      )}
-                      {project.status === "pending" && (
-                        <div className="mt-4 flex items-center space-x-3">
-                          <button
-                            onClick={() =>
-                              handleMarkSubmitted(project.id, "project")
-                            }
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
-                          >
-                            Mark as Submitted
-                          </button>
-                        </div>
-                      )}
-                      {project.status === "submitted" && (
-                        <div className="mt-4 flex items-center space-x-3">
-                          <input
-                            type="number"
-                            value={formData[project.id] || ""}
-                            onChange={(e) =>
-                              handleGradeChange(project.id, e.target.value)
-                            }
-                            className="w-24 bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-                            placeholder="Grade"
-                          />
-                          <button
-                            onClick={() =>
-                              handleGradeSubmit(project.id, "project")
-                            }
-                            className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
-                          >
-                            Submit Grade
-                          </button>
-                        </div>
-                      )}
-                      {project.status === "graded" && (
-                        <div className="mt-3">
-                          <p className="text-green-400 text-sm font-semibold">
-                            Graded: {project.grade}/{project.points}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          project.status === "graded"
-                            ? "bg-green-500 text-white"
-                            : project.status === "submitted"
-                            ? "bg-blue-500 text-white"
-                            : "bg-yellow-500 text-gray-900"
-                        }`}
-                      >
-                        {project.status.toUpperCase()}
-                      </span>
-                      <button
-                        onClick={() => handleEditProject(project)}
-                        className="text-yellow-500 hover:text-yellow-400"
-                        title="Edit Project"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProject(project.id)}
-                        className="text-red-500 hover:text-red-400"
-                        title="Delete Project"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Attendance Tab */}
-      {activeTab === "attendance" && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
-              <UserCheck className="w-5 h-5 text-yellow-500" />
-              <span>All Attendance Records</span>
-            </h3>
-            <button
-              onClick={() => {
-                setSelectedForm("attendance");
-                setFormData({});
-              }}
-              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
-            >
-              New Attendance
-            </button>
-          </div>
-          <input
-            type="text"
-            placeholder="Search attendance records..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-          />
-          {filteredAttendance.length === 0 ? (
-            <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
-              <p className="text-gray-400 text-lg">No attendance records yet</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredAttendance.map((record) => (
-                <div
-                  key={record.id}
-                  className="bg-gray-800 rounded-lg p-6 border border-gray-700"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h4 className="text-white font-semibold text-lg mb-2">
-                        {record.topic}
-                      </h4>
-                      <div className="flex items-center space-x-4 text-sm">
-                        <span className="text-gray-400">
-                          Date: {record.date}
-                        </span>
-                        <span className="text-gray-400">
-                          Student:{" "}
-                          {
-                            recentStudents.find(
-                              (s) => s.id === record.studentId
-                            )?.name
-                          }
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          record.status === "present"
-                            ? "bg-green-500 text-white"
-                            : "bg-red-500 text-white"
-                        }`}
-                      >
-                        {record.status.toUpperCase()}
-                      </span>
-                      <button
-                        onClick={() => handleEditAttendance(record)}
-                        className="text-yellow-500 hover:text-yellow-400"
-                        title="Edit Attendance"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteAttendance(record.id)}
-                        className="text-red-500 hover:text-red-400"
-                        title="Delete Attendance"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Roadmap Tab */}
-      {activeTab === "roadmap" && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
-              <Map className="w-5 h-5 text-yellow-500" />
-              <span>All Roadmap Items</span>
-            </h3>
-            <button
-              onClick={() => {
-                setSelectedForm("roadmap");
-                setFormData({});
-              }}
-              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
-            >
-              New Roadmap Item
-            </button>
-          </div>
-          <input
-            type="text"
-            placeholder="Search roadmap items..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-          />
-          {filteredRoadmapItems.length === 0 ? (
-            <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
-              <p className="text-gray-400 text-lg">No roadmap items yet</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredRoadmapItems.map((roadmap) => (
-                <div
-                  key={roadmap.id}
-                  className="bg-gray-800 rounded-lg p-6 border border-gray-700"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h4 className="text-white font-semibold text-lg mb-2">
-                        {roadmap.phase} - {roadmap.term}
-                      </h4>
-                      <div className="flex items-center space-x-4 text-sm mb-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            roadmap.status === "completed"
-                              ? "bg-green-500 text-white"
-                              : roadmap.status === "in-progress"
-                              ? "bg-blue-500 text-white"
-                              : "bg-gray-500 text-white"
-                          }`}
-                        >
-                          {roadmap.status.toUpperCase()}
-                        </span>
-                      </div>
-                      {roadmap.weeks && roadmap.weeks.length > 0 && (
-                        <div className="mt-4 space-y-3">
-                          <h5 className="text-gray-400 text-sm font-semibold">
-                            Weeks:
-                          </h5>
-                          {roadmap.weeks.map((week, weekIndex) => (
-                            <div
-                              key={weekIndex}
-                              className="bg-gray-900 rounded-lg p-4 border border-gray-700"
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <h6 className="text-white font-semibold">
-                                  Week {week.weekNumber}: {week.topic}
-                                </h6>
-                                <button
-                                  onClick={() =>
-                                    handleSetCurrentWeek(roadmap.id, weekIndex)
-                                  }
-                                  className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                                    week.current
-                                      ? "bg-yellow-500 text-gray-900"
-                                      : "bg-gray-700 text-white hover:bg-gray-600"
-                                  }`}
-                                >
-                                  {week.current
-                                    ? "Current Week"
-                                    : "Set as Current"}
-                                </button>
-                              </div>
-                              {week.subTopics && week.subTopics.length > 0 && (
-                                <div className="mt-3 space-y-2">
-                                  {week.subTopics.map((subTopic) => (
-                                    <div
-                                      key={subTopic.id}
-                                      className="flex items-center justify-between bg-gray-800 rounded-lg p-3"
-                                    >
-                                      <div className="flex items-center space-x-3">
-                                        <input
-                                          type="checkbox"
-                                          checked={subTopic.completed}
-                                          onChange={() =>
-                                            handleToggleSubTopicComplete(
-                                              roadmap.id,
-                                              weekIndex,
-                                              subTopic.id
-                                            )
-                                          }
-                                          className="w-4 h-4"
-                                        />
-                                        <span
-                                          className={`text-sm ${
-                                            subTopic.completed
-                                              ? "text-gray-500 line-through"
-                                              : "text-white"
-                                          }`}
-                                        >
-                                          {subTopic.name}
-                                        </span>
-                                      </div>
-                                      <button
-                                        onClick={() =>
-                                          handleDeleteSubTopic(
-                                            roadmap.id,
-                                            weekIndex,
-                                            subTopic.id
-                                          )
-                                        }
-                                        className="text-red-500 hover:text-red-400"
-                                        title="Delete Subtopic"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              <button
-                                onClick={() => {
-                                  setSelectedForm("subtopic");
-                                  setFormData({
-                                    roadmapId: roadmap.id,
-                                    weekIndex,
-                                  });
-                                }}
-                                className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
-                              >
-                                Add Subtopic
-                              </button>
-                            </div>
-                          ))}
-                          <button
-                            onClick={() => {
-                              setSelectedForm("week");
-                              setFormData({ roadmapId: roadmap.id });
-                            }}
-                            className="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-                          >
-                            Add Week
-                          </button>
-                        </div>
-                      )}
-                      {(!roadmap.weeks || roadmap.weeks.length === 0) && (
-                        <button
-                          onClick={() => {
-                            setSelectedForm("week");
-                            setFormData({ roadmapId: roadmap.id });
-                          }}
-                          className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-                        >
-                          Add First Week
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-3 ml-4">
-                      <button
-                        onClick={() => handleEditRoadmapItem(roadmap)}
-                        className="text-yellow-500 hover:text-yellow-400"
-                        title="Edit Roadmap Item"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteRoadmapItem(roadmap.id)}
-                        className="text-red-500 hover:text-red-400"
-                        title="Delete Roadmap Item"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Class Materials Tab */}
-      {activeTab === "classmaterials" && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
-              <BookOpen className="w-5 h-5 text-yellow-500" />
-              <span>All Class Materials</span>
-            </h3>
-            <button
-              onClick={() => {
-                setSelectedForm("classmaterial");
-                setFormData({});
-              }}
-              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
-            >
-              New Class Material
-            </button>
-          </div>
-          <input
-            type="text"
-            placeholder="Search class materials..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-          />
-          {filteredClassMaterials.length === 0 ? (
-            <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
-              <p className="text-gray-400 text-lg">No class materials yet</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredClassMaterials.map((material) => (
-                <div
-                  key={material.id}
-                  className="bg-gray-800 rounded-lg p-6 border border-gray-700"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <BookOpen className="w-6 h-6 text-yellow-500" />
-                        <h4 className="text-white font-semibold text-lg">
-                          {material.title}
-                        </h4>
-                      </div>
-                      <span className="inline-block bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold">
-                        Week {material.week}
-                      </span>
-                      <span className="ml-2 inline-block bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold">
-                        {material.resources} resources
-                      </span>
-                      <div className="space-y-2 mt-4">
-                        <p className="text-gray-400 text-sm font-semibold mb-2">
-                          Topics Covered:
-                        </p>
-                        {material.topics.map((topic, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center space-x-2 text-gray-300"
-                          >
-                            <CheckCircle className="w-4 h-4 text-yellow-500" />
-                            <span>{topic}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {material.files && material.files.length > 0 && (
-                        <div className="border-t border-gray-700 pt-4 mt-4">
-                          <p className="text-gray-400 text-sm font-semibold mb-3">
-                            Downloadable Files:
-                          </p>
-                          <div className="space-y-2">
-                            {material.files.map((file, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center justify-between p-3 bg-gray-900 rounded-lg"
-                              >
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-10 h-10 bg-yellow-500 rounded flex items-center justify-center">
-                                    <span className="text-gray-900 text-xs font-bold">
-                                      {file.type}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <p className="text-white font-medium">
-                                      {file.name}
-                                    </p>
-                                    <p className="text-gray-400 text-xs">
-                                      {file.size}
-                                    </p>
-                                  </div>
-                                </div>
-                                <button className="text-yellow-500 hover:text-yellow-400 transition-colors">
-                                  <Download className="w-5 h-5" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-3 ml-4">
-                      <button
-                        onClick={() => handleEditClassMaterial(material)}
-                        className="text-yellow-500 hover:text-yellow-400"
-                        title="Edit Class Material"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClassMaterial(material.id)}
-                        className="text-red-500 hover:text-red-400"
-                        title="Delete Class Material"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Programs Tab */}
-      {activeTab === "programs" && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
-              <Briefcase className="w-5 h-5 text-yellow-500" />
-              <span>All Programs</span>
-            </h3>
-            <button
-              onClick={() => {
-                setSelectedForm("program");
-                setFormData({});
-              }}
-              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
-            >
-              New Program
-            </button>
-          </div>
-          <input
-            type="text"
-            placeholder="Search programs..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-          />
-          {filteredPrograms.length === 0 ? (
-            <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
-              <p className="text-gray-400 text-lg">No programs yet</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredPrograms.map((program) => {
-                const completedMilestones =
-                  program.milestones?.filter((m) => m.completed).length || 0;
-                const total = program.totalMilestones || 0;
-                const progress =
-                  total > 0
-                    ? ((completedMilestones / total) * 100).toFixed(0)
-                    : 0;
-                return (
-                  <div
-                    key={program.id}
-                    className="bg-gray-800 rounded-lg p-6 border border-gray-700"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h4 className="text-white font-semibold text-lg mb-2">
-                          {program.name}
-                        </h4>
-                        <p className="text-gray-400 text-sm mb-3">
-                          {program.description}
-                        </p>
-                        <div className="mb-3">
-                          <p className="text-gray-400 text-sm mb-2">
-                            Progress: {completedMilestones}/{total} ({progress}
-                            %)
-                          </p>
-                          <div className="w-full bg-gray-700 rounded-full h-2">
-                            <div
-                              className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                        </div>
-                        {program.pendingRequests &&
-                          program.pendingRequests.length > 0 && (
-                            <div className="mb-4">
-                              <p className="text-gray-400 text-sm font-semibold mb-2">
-                                Pending Join Requests:
-                              </p>
-                              <div className="space-y-2">
-                                {program.pendingRequests.map((studentId) => (
-                                  <div
-                                    key={studentId}
-                                    className="flex items-center justify-between bg-yellow-900 p-2 rounded"
-                                  >
-                                    <span className="text-yellow-300 text-sm">
-                                      Julius Dagana (ID: {studentId})
-                                    </span>
-                                    <div className="space-x-2">
-                                      <button
-                                        onClick={() =>
-                                          handleApproveJoin(program.id)
-                                        }
-                                        className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs"
-                                      >
-                                        Approve
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          handleRejectJoin(program.id)
-                                        }
-                                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs"
-                                      >
-                                        Reject
-                                      </button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        {program.enrolledStudents &&
-                          program.enrolledStudents.length > 0 && (
-                            <div className="mb-4">
-                              <p className="text-gray-400 text-sm font-semibold mb-2">
-                                Enrolled Students:
-                              </p>
-                              <div className="space-y-1">
-                                {program.enrolledStudents.map((studentId) => (
-                                  <span
-                                    key={studentId}
-                                    className="inline-block bg-green-900 text-green-300 px-2 py-1 rounded text-xs"
-                                  >
-                                    Julius Dagana (ID: {studentId})
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        {program.milestones &&
-                          program.milestones.length > 0 && (
-                            <div className="mt-4 space-y-3">
-                              <h5 className="text-gray-400 text-sm font-semibold">
-                                Milestones:
-                              </h5>
-                              {program.milestones.map((milestone) => (
-                                <div
-                                  key={milestone.id}
-                                  className="bg-gray-900 rounded-lg p-3"
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span
-                                      className={`text-sm ${
-                                        milestone.completed
-                                          ? "text-green-400 line-through"
-                                          : "text-white"
-                                      }`}
-                                    >
-                                      {milestone.name}
-                                    </span>
-                                    <div className="flex items-center space-x-2">
-                                      <input
-                                        type="checkbox"
-                                        checked={milestone.completed}
-                                        onChange={() =>
-                                          handleAdminToggleMilestone(
-                                            program.id,
-                                            milestone.id
-                                          )
-                                        }
-                                        className="w-4 h-4"
-                                      />
-                                      <span
-                                        className={`px-2 py-1 rounded-full text-xs ${
-                                          milestone.completed
-                                            ? "bg-green-500 text-white"
-                                            : "bg-gray-500 text-white"
-                                        }`}
-                                      >
-                                        {milestone.completed
-                                          ? "Completed"
-                                          : "Pending"}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        {(!program.milestones ||
-                          program.milestones.length === 0) && (
-                          <button
-                            onClick={() => {
-                              setSelectedForm("milestone");
-                              setFormData({ programId: program.id });
-                            }}
-                            className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-                          >
-                            Add First Milestone
-                          </button>
-                        )}
-                        {program.milestones &&
-                          program.milestones.length <
-                            program.totalMilestones && (
-                            <button
-                              onClick={() => {
-                                setSelectedForm("milestone");
-                                setFormData({ programId: program.id });
-                              }}
-                              className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-                            >
-                              Add Milestone
-                            </button>
-                          )}
-                      </div>
-                      <div className="flex items-center space-x-3 ml-4">
-                        <button
-                          onClick={() => handleEditProgram(program)}
-                          className="text-yellow-500 hover:text-yellow-400"
-                          title="Edit Program"
-                        >
-                          <Edit className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteProgram(program.id)}
-                          className="text-red-500 hover:text-red-400"
-                          title="Delete Program"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+      <Admini
+        stats={stats}
+        StatIcon={StatIcon}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        selectedForm={selectedForm}
+        setSelectedForm={setSelectedForm}
+        setFormData={setFormData}
+        formData={formData}
+        handleFormChange={handleFormChange}
+        handleFormSubmit={handleFormSubmit}
+        renderForm={renderForm}
+        getFormTitle={getFormTitle}
+        events={events}
+        handleEditEvent={handleEditEvent}
+        deleteEvent={deleteEvent}
+        pendingActions={pendingActions}
+        announcements={announcements}
+        handleEditAnnouncement={handleEditAnnouncement}
+        deleteAnnouncement={deleteAnnouncement}
+      />
+      <Administra
+        activeTab={activeTab}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        setSelectedForm={setSelectedForm}
+        setFormData={setFormData}
+        formData={formData}
+        recentStudents={recentStudents}
+        assignments={assignments}
+        exercises={exercises}
+        projects={projects}
+      />
+      <Adminis
+        activeTab={activeTab}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        setSelectedForm={setSelectedForm}
+        setFormData={setFormData}
+        formData={formData}
+        recentStudents={recentStudents}
+        attendance={attendance}
+        roadmapItems={roadmapItems}
+        classMaterials={classMaterials}
+        programs={programs}
+      />
     </div>
   );
 };
