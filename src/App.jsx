@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import useManageStore from "../src/Store/useManageStore"; // Import the store
 
 // Import all components from Pages folder
 import Announcement from "../Pages/Announcement";
@@ -126,13 +127,15 @@ const ProgressCard = ({
   total,
   color = "bg-yellow-500",
 }) => {
-  const percentage = (current / total) * 100;
+  const percentage = total > 0 ? (current / total) * 100 : 0;
 
   return (
     <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-      <div className="flex items-center space-x-3 mb-4">
-        <Icon className="w-6 h-6 text-gray-400" />
-        <h3 className="text-white font-semibold">{title}</h3>
+      <div className="flex items-start space-x-3 mb-4">
+        <Icon className="w-6 h-6 text-gray-400 flex-shrink-0 mt-0.5" />
+        <h3 className="text-white font-semibold flex-1 min-w-0 break-words">
+          {title}
+        </h3>
       </div>
       <div className="flex justify-between items-center mb-2">
         <span className="text-gray-400 text-sm">Progress</span>
@@ -150,9 +153,9 @@ const ProgressCard = ({
   );
 };
 
-// Overall Progress Component
+// Overall Progress Component - Now dynamic
 const OverallProgress = ({ current, total }) => {
-  const percentage = (current / total) * 100;
+  const percentage = total > 0 ? (current / total) * 100 : 0;
 
   return (
     <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
@@ -175,8 +178,8 @@ const OverallProgress = ({ current, total }) => {
   );
 };
 
-// Welcome Section Component
-const WelcomeSection = ({ name }) => {
+// Welcome Section Component - Now partially dynamic from roadmap
+const WelcomeSection = ({ name, currentWeekData, nextWeekData }) => {
   return (
     <div className="mb-8">
       <div className="flex items-center space-x-4 mb-6">
@@ -200,27 +203,37 @@ const WelcomeSection = ({ name }) => {
             </h3>
           </div>
           <div className="inline-block bg-yellow-500 text-gray-900 px-3 py-1 rounded-full text-xs font-semibold mb-4">
-            Backend - NodeJS - Week 4
+            {currentWeekData?.phase || "Backend"} -{" "}
+            {currentWeekData?.term || "NodeJS"} - Week{" "}
+            {currentWeekData?.weekNumber || 4}
           </div>
           <ul className="space-y-3">
-            <li className="flex items-center space-x-2 text-gray-300">
-              <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
-                <span className="text-gray-900 text-xs">✓</span>
-              </div>
-              <span>Postman</span>
-            </li>
-            <li className="flex items-center space-x-2 text-gray-300">
-              <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
-                <span className="text-gray-900 text-xs">✓</span>
-              </div>
-              <span>REST architecture</span>
-            </li>
-            <li className="flex items-center space-x-2 text-gray-300">
-              <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
-                <span className="text-gray-900 text-xs">✓</span>
-              </div>
-              <span>Getting organized - controllers, routes, models</span>
-            </li>
+            {currentWeekData?.subTopics?.slice(0, 3).map((sub, idx) => (
+              <li
+                key={idx}
+                className="flex items-center space-x-2 text-gray-300"
+              >
+                <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
+                  <span className="text-gray-900 text-xs">✓</span>
+                </div>
+                <span>{sub.name}</span>
+              </li>
+            )) ||
+              [
+                { name: "Postman" },
+                { name: "REST architecture" },
+                { name: "Getting organized - controllers, routes, models" },
+              ].map((item, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-center space-x-2 text-gray-300"
+                >
+                  <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
+                    <span className="text-gray-900 text-xs">✓</span>
+                  </div>
+                  <span>{item.name}</span>
+                </li>
+              ))}
           </ul>
         </div>
 
@@ -232,17 +245,32 @@ const WelcomeSection = ({ name }) => {
             </h3>
           </div>
           <div className="inline-block bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold mb-4">
-            Backend - NodeJS - Week 5
+            {nextWeekData?.phase || "Backend"} -{" "}
+            {nextWeekData?.term || "NodeJS"} - Week{" "}
+            {nextWeekData?.weekNumber || 5}
           </div>
           <ul className="space-y-3">
-            <li className="flex items-center space-x-2 text-gray-400">
-              <div className="w-5 h-5 border-2 border-gray-600 rounded-full" />
-              <span>Databases - SQL and NoSQL</span>
-            </li>
-            <li className="flex items-center space-x-2 text-gray-400">
-              <div className="w-5 h-5 border-2 border-gray-600 rounded-full" />
-              <span>Setting up Mongodb</span>
-            </li>
+            {nextWeekData?.subTopics?.slice(0, 2).map((sub, idx) => (
+              <li
+                key={idx}
+                className="flex items-center space-x-2 text-gray-400"
+              >
+                <div className="w-5 h-5 border-2 border-gray-600 rounded-full" />
+                <span>{sub.name}</span>
+              </li>
+            )) ||
+              [
+                { name: "Databases - SQL and NoSQL" },
+                { name: "Setting up Mongodb" },
+              ].map((item, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-center space-x-2 text-gray-400"
+                >
+                  <div className="w-5 h-5 border-2 border-gray-600 rounded-full" />
+                  <span>{item.name}</span>
+                </li>
+              ))}
           </ul>
         </div>
       </div>
@@ -271,8 +299,83 @@ const RecentResources = () => {
   );
 };
 
-// Performance Hub Component
+// Performance Hub Component - Now fully dynamic from store
 const PerformanceHub = () => {
+  const {
+    attendance,
+    assignments,
+    exercises,
+    projects,
+    programs, // For soft skills
+  } = useManageStore();
+
+  const studentId = 1; // Hardcoded for demo
+
+  // Attendance: Assume 1 point per present session, max 50
+  const studentAttendance = attendance.filter((a) => a.studentId === studentId);
+  const presentAttendance = studentAttendance.filter(
+    (a) => a.status === "present"
+  );
+  const attendanceCurrent = presentAttendance.length;
+  const attendanceTotal = 50; // Fixed max
+
+  // Assignments: Sum grades for graded, total points for all
+  const studentAssignments = assignments.filter(
+    (a) => a.studentId === studentId
+  );
+  const gradedAssignments = studentAssignments.filter(
+    (a) => a.status === "graded"
+  );
+  const assignmentsCurrent = gradedAssignments.reduce(
+    (sum, a) => sum + (a.grade || 0),
+    0
+  );
+  const assignmentsTotal = studentAssignments.reduce(
+    (sum, a) => sum + a.points,
+    0
+  );
+
+  // Exercises: Similar to assignments
+  const studentExercises = exercises.filter((e) => e.studentId === studentId);
+  const gradedExercises = studentExercises.filter((e) => e.status === "graded");
+  const exercisesCurrent = gradedExercises.reduce(
+    (sum, e) => sum + (e.grade || 0),
+    0
+  );
+  const exercisesTotal = studentExercises.reduce((sum, e) => sum + e.points, 0);
+
+  // Projects: Sum grades for graded, fixed total
+  const studentProjects = projects.filter((p) => p.studentId === studentId);
+  const gradedProjects = studentProjects.filter((p) => p.status === "graded");
+  const projectsCurrent = gradedProjects.reduce(
+    (sum, p) => sum + (p.grade || 0),
+    0
+  );
+  const projectsTotal = 50; // Fixed for weekly projects
+
+  // Soft Skills & Product Training: From programs milestones completed
+  const enrolledPrograms = programs.filter((p) =>
+    p.enrolledStudents?.includes(studentId)
+  );
+  const softSkillsCurrent = enrolledPrograms.reduce((sum, p) => {
+    return sum + (p.milestones?.filter((m) => m.completed).length || 0);
+  }, 0);
+  const softSkillsTotal = 6;
+
+  // Overall
+  const overallCurrent =
+    attendanceCurrent +
+    assignmentsCurrent +
+    exercisesCurrent +
+    projectsCurrent +
+    softSkillsCurrent;
+  const overallTotal =
+    attendanceTotal +
+    assignmentsTotal +
+    exercisesTotal +
+    projectsTotal +
+    softSkillsTotal;
+
   return (
     <div className="mb-8">
       <div className="flex items-center space-x-2 mb-6">
@@ -283,67 +386,84 @@ const PerformanceHub = () => {
         Your academic points breakdown and progress.
       </p>
 
-      <OverallProgress current={116} total={286} />
+      <OverallProgress current={overallCurrent} total={overallTotal} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ProgressCard
           title="Class Attendance"
           icon={UserCheck}
-          current={33}
-          total={50}
+          current={attendanceCurrent}
+          total={attendanceTotal}
         />
         <ProgressCard
           title="Class Assignments"
           icon={FileText}
-          current={28}
-          total={50}
+          current={assignmentsCurrent}
+          total={assignmentsTotal}
         />
         <ProgressCard
           title="Class Exercises"
           icon={Dumbbell}
-          current={29}
-          total={50}
+          current={exercisesCurrent}
+          total={exercisesTotal}
         />
         <ProgressCard
-          title="Weekly Projects"
+          title="Projects"
           icon={FolderOpen}
-          current={3}
-          total={50}
-        />
-        <ProgressCard
-          title="Monthly Personal Projects"
-          icon={Briefcase}
-          current={0}
-          total={10}
+          current={projectsCurrent}
+          total={projectsTotal}
         />
         <ProgressCard
           title="Soft Skills & Product Training"
           icon={Award}
-          current={0}
-          total={6}
-        />
-        <ProgressCard
-          title="Mini Demo Days"
-          icon={Calendar}
-          current={5}
-          total={5}
-        />
-        <ProgressCard
-          title="100 Days of Code"
-          icon={Code}
-          current={18}
-          total={50}
+          current={softSkillsCurrent}
+          total={softSkillsTotal}
+          color="bg-blue-500"
         />
       </div>
     </div>
   );
 };
 
-// Dashboard Content Component
+// Dashboard Content Component - Now passes dynamic data to WelcomeSection
 const DashboardContent = () => {
+  const { profile } = useManageStore();
+  const { roadmapItems } = useManageStore();
+  const studentId = 1;
+
+  // Find current and next week data from roadmap
+  let currentWeekData = null;
+  let nextWeekData = null;
+  roadmapItems.forEach((item) => {
+    if (item.weeks) {
+      const currentWeekIndex = item.weeks.findIndex((w) => w.current);
+      if (currentWeekIndex !== -1) {
+        currentWeekData = {
+          phase: item.phase,
+          term: item.term,
+          weekNumber: item.weeks[currentWeekIndex].weekNumber,
+          subTopics: item.weeks[currentWeekIndex].subTopics || [],
+        };
+      }
+      const nextWeekIndex = item.weeks.findIndex((w) => w.next);
+      if (nextWeekIndex !== -1) {
+        nextWeekData = {
+          phase: item.phase,
+          term: item.term,
+          weekNumber: item.weeks[nextWeekIndex].weekNumber,
+          subTopics: item.weeks[nextWeekIndex].subTopics || [],
+        };
+      }
+    }
+  });
+
   return (
     <div>
-      <WelcomeSection name="Julius Dagana" />
+      <WelcomeSection
+        name={profile.name || "Julius Dagana"}
+        currentWeekData={currentWeekData}
+        nextWeekData={nextWeekData}
+      />
       <PerformanceHub />
       <RecentResources />
     </div>
