@@ -1,3 +1,4 @@
+// App.jsx
 import React, { useState } from "react";
 import {
   Home,
@@ -39,6 +40,220 @@ import WorkReady from "../Pages/WorkReady";
 import Profile from "../Pages/Profile";
 import CampusConnect from "../Pages/CampusConnect";
 import Administrator from "./Components/Administrator.jsx";
+
+// ChatModal component (duplicated from Directory for global use in Dashboard)
+const ChatModal = ({ onClose, otherUser, currentUser }) => {
+  const [newMessage, setNewMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const { conversations, addMessage } = useManageStore();
+  const markNotificationAsRead = useManageStore(
+    (state) => state.markNotificationAsRead
+  );
+
+  const convKey = [
+    Math.min(currentUser.id, otherUser.id),
+    Math.max(currentUser.id, otherUser.id),
+  ].join("-");
+
+  useEffect(() => {
+    setMessages(conversations[convKey] || []);
+  }, [conversations, convKey]);
+
+  // Mark unread notifications from this user as read when chat opens
+  useEffect(() => {
+    const state = useManageStore.getState();
+    const unreadNotifs = state.notifications.filter(
+      (n) =>
+        n.userId === currentUser.id &&
+        !n.read &&
+        n.fromUserId === otherUser.id &&
+        n.type === "message"
+    );
+    unreadNotifs.forEach((notif) => {
+      markNotificationAsRead(notif.id);
+    });
+  }, [currentUser.id, otherUser.id, markNotificationAsRead]);
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (newMessage.trim()) {
+      addMessage(currentUser.id, otherUser.id, currentUser.id, newMessage);
+      setNewMessage("");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 w-full h-full max-w-4xl rounded-lg flex flex-col">
+        {/* Header */}
+        <div className="bg-gray-700 p-4 flex items-center justify-between border-b border-gray-600">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
+              <User className="w-5 h-5 text-gray-300" />
+            </div>
+            <div>
+              <h3 className="text-white font-semibold">{otherUser.name}</h3>
+              <p className="text-gray-400 text-sm">{otherUser.role}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex ${
+                msg.senderId === currentUser.id
+                  ? "justify-end"
+                  : "justify-start"
+              }`}
+            >
+              <div
+                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                  msg.senderId === currentUser.id
+                    ? "bg-yellow-500 text-gray-900"
+                    : "bg-gray-700 text-white"
+                }`}
+              >
+                <p>{msg.text}</p>
+                <p
+                  className={`text-xs mt-1 ${
+                    msg.senderId === currentUser.id
+                      ? "text-yellow-700"
+                      : "text-gray-400"
+                  }`}
+                >
+                  {new Date(msg.timestamp).toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Input */}
+        <form
+          onSubmit={handleSendMessage}
+          className="p-4 border-t border-gray-600"
+        >
+          <div className="flex items-center space-x-2">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type a message..."
+              className="flex-1 bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 outline-none"
+            />
+            <button
+              type="submit"
+              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Notification Modal Component (updated for click handling)
+const NotificationModal = ({
+  isOpen,
+  onClose,
+  userId,
+  directory,
+  conversations,
+  markNotificationAsRead,
+  onOpenChat,
+}) => {
+  if (!isOpen) return null;
+
+  const notifications = useManageStore
+    .getState()
+    .notifications.filter(
+      (n) => n.userId === userId && !n.read && n.type === "message"
+    );
+
+  if (notifications.length === 0) {
+    return (
+      <div className="fixed right-4 top-20 w-80 bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-700">
+        <div className="p-4 border-b border-gray-600">
+          <h3 className="text-white font-semibold">Notifications</h3>
+        </div>
+        <div className="p-4 text-gray-400 text-center">
+          No new notifications
+        </div>
+        <button
+          onClick={onClose}
+          className="w-full p-2 hover:bg-gray-700 text-gray-300"
+        >
+          Close
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed right-4 top-20 w-80 bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-700 max-h-96 overflow-y-auto">
+      <div className="p-4 border-b border-gray-600 flex justify-between items-center">
+        <h3 className="text-white font-semibold">
+          Notifications ({notifications.length})
+        </h3>
+        <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="divide-y divide-gray-700">
+        {notifications.map((notif) => {
+          const sender = directory.find((u) => u.id === notif.fromUserId);
+          const convKey = [
+            Math.min(userId, notif.fromUserId),
+            Math.max(userId, notif.fromUserId),
+          ].join("-");
+          const messages = conversations[convKey] || [];
+          const message = messages.find((m) => m.id === notif.messageId);
+          const preview = message
+            ? `${message.text.slice(0, 50)}${
+                message.text.length > 50 ? "..." : ""
+              }`
+            : "New message";
+          return (
+            <div
+              key={notif.id}
+              className="p-4 hover:bg-gray-700 cursor-pointer"
+              onClick={() => {
+                markNotificationAsRead(notif.id);
+                onClose();
+                if (sender && onOpenChat) {
+                  onOpenChat(sender);
+                }
+              }}
+            >
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="w-4 h-4 text-gray-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-medium truncate">
+                    {sender?.name || "Unknown"}
+                  </p>
+                  <p className="text-gray-300 text-sm truncate">{preview}</p>
+                  <p className="text-gray-500 text-xs mt-1">
+                    {new Date(notif.timestamp).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 // Sidebar Component
 const Sidebar = ({
@@ -474,6 +689,26 @@ const DashboardContent = () => {
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const markAsRead = useManageStore((state) => state.markAsRead);
+  const markNotificationAsRead = useManageStore(
+    (state) => state.markNotificationAsRead
+  );
+  const { directory, conversations } = useManageStore();
+  const userId = 1;
+  const currentUser = { id: 1, name: "Julius Dagana" };
+
+  const handleBellClick = () => {
+    setIsNotificationOpen(true);
+    markAsRead(userId);
+  };
+
+  const handleOpenChatFromNotification = (sender) => {
+    setSelectedUser(sender);
+    setIsChatOpen(true);
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -538,8 +773,20 @@ const Dashboard = () => {
               <Menu className="w-6 h-6" />
             </button>
             <div className="flex items-center space-x-4 ml-auto">
-              <button className="text-gray-400 hover:text-white">
+              <button
+                onClick={handleBellClick}
+                className="relative text-gray-400 hover:text-white"
+              >
                 <Bell className="w-6 h-6" />
+                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center transform translate-x-1/2 -translate-y-1/2">
+                  {
+                    useManageStore
+                      .getState()
+                      .notifications.filter(
+                        (n) => n.userId === userId && !n.read
+                      ).length
+                  }
+                </span>
               </button>
               <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
                 <User className="w-6 h-6 text-gray-400" />
@@ -549,6 +796,24 @@ const Dashboard = () => {
         </header>
         <main className="flex-1 overflow-y-auto p-6">{renderContent()}</main>
       </div>
+
+      {isChatOpen && selectedUser && (
+        <ChatModal
+          onClose={() => setIsChatOpen(false)}
+          otherUser={selectedUser}
+          currentUser={currentUser}
+        />
+      )}
+
+      <NotificationModal
+        isOpen={isNotificationOpen}
+        onClose={() => setIsNotificationOpen(false)}
+        userId={userId}
+        directory={directory}
+        conversations={conversations}
+        markNotificationAsRead={markNotificationAsRead}
+        onOpenChat={handleOpenChatFromNotification}
+      />
     </div>
   );
 };

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+// Directory.jsx
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Search,
   User,
@@ -8,15 +9,19 @@ import {
   UserPlus,
   Users,
   Clock,
-  RefreshCw, // New: For reset button
+  RefreshCw,
+  X,
 } from "lucide-react";
-import useManageStore from "../src/Store/useManageStore"; // Adjust path if needed
+import useManageStore from "../src/Store/useManageStore";
 
-// Simple Chat Modal Component - Full screen (unchanged)
+// Simple Chat Modal Component - Full screen
 const ChatModal = ({ onClose, otherUser, currentUser }) => {
   const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const { conversations, addMessage } = useManageStore();
+  const markNotificationAsRead = useManageStore(
+    (state) => state.markNotificationAsRead
+  );
 
   const convKey = [
     Math.min(currentUser.id, otherUser.id),
@@ -27,17 +32,25 @@ const ChatModal = ({ onClose, otherUser, currentUser }) => {
     setMessages(conversations[convKey] || []);
   }, [conversations, convKey]);
 
+  // Mark unread notifications from this user as read when chat opens
+  useEffect(() => {
+    const state = useManageStore.getState();
+    const unreadNotifs = state.notifications.filter(
+      (n) =>
+        n.userId === currentUser.id &&
+        !n.read &&
+        n.fromUserId === otherUser.id &&
+        n.type === "message"
+    );
+    unreadNotifs.forEach((notif) => {
+      markNotificationAsRead(notif.id);
+    });
+  }, [currentUser.id, otherUser.id, markNotificationAsRead]);
+
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (newMessage.trim()) {
-      const message = {
-        id: Date.now(),
-        senderId: currentUser.id,
-        text: newMessage,
-        timestamp: new Date().toISOString(),
-      };
       addMessage(currentUser.id, otherUser.id, currentUser.id, newMessage);
-      setMessages((prev) => [...prev, message]);
       setNewMessage("");
     }
   };
@@ -57,7 +70,7 @@ const ChatModal = ({ onClose, otherUser, currentUser }) => {
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
-            <Users className="w-6 h-6" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
@@ -172,12 +185,49 @@ const Directory = () => {
       ? storeDirectory
       : fallbackDirectory;
 
+  // Memoized derived state
+  const friends = useMemo(
+    () =>
+      friendRequests
+        .filter(
+          (r) =>
+            (r.fromId === currentUser.id || r.toId === currentUser.id) &&
+            r.status === "accepted"
+        )
+        .map((r) => (r.fromId === currentUser.id ? r.toId : r.fromId)),
+    [friendRequests, currentUser.id]
+  );
+
+  const pendingOutgoing = useMemo(
+    () =>
+      friendRequests
+        .filter((r) => r.fromId === currentUser.id && r.status === "pending")
+        .map((r) => r.toId),
+    [friendRequests, currentUser.id]
+  );
+
+  const isFriend = useMemo(
+    () => (personId) => friends.includes(personId),
+    [friends]
+  );
+
+  const hasPendingOutgoing = useMemo(
+    () => (personId) => pendingOutgoing.includes(personId),
+    [pendingOutgoing]
+  );
+
   // Synchronous filter (instant results)
-  const filteredPeople = directory.filter(
-    (person) =>
-      person.id !== currentUser.id &&
-      (person.name.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
-        person.role.toLowerCase().includes(searchTerm.toLowerCase().trim()))
+  const filteredPeople = useMemo(
+    () =>
+      directory.filter(
+        (person) =>
+          person.id !== currentUser.id &&
+          (person.name
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase().trim()) ||
+            person.role.toLowerCase().includes(searchTerm.toLowerCase().trim()))
+      ),
+    [directory, currentUser.id, searchTerm]
   );
 
   // Debug log on every render
@@ -209,24 +259,6 @@ const Directory = () => {
     localStorage.removeItem("manage-store");
     window.location.reload();
   };
-
-  const getFriends = (userId) =>
-    friendRequests
-      .filter(
-        (r) =>
-          (r.fromId === userId || r.toId === userId) && r.status === "accepted"
-      )
-      .map((r) => (r.fromId === userId ? r.toId : r.fromId));
-
-  const getPendingOutgoing = (userId) =>
-    friendRequests
-      .filter((r) => r.fromId === userId && r.status === "pending")
-      .map((r) => r.toId);
-
-  const isFriend = (personId) => getFriends(currentUser.id).includes(personId);
-
-  const hasPendingOutgoing = (personId) =>
-    getPendingOutgoing(currentUser.id).includes(personId);
 
   const handleSendRequest = (personId) => {
     if (!isFriend(personId) && !hasPendingOutgoing(personId)) {
