@@ -1,4 +1,4 @@
-// Administrator.jsx
+
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Users,
@@ -9,11 +9,238 @@ import {
   User,
   Mail,
   Bell,
+  Calendar,
+  Clock,
 } from "lucide-react";
 import useManageStore from "../Store/useManageStore";
 import Admini from "./Admini";
 import Administra from "./Administra";
 import Adminis from "./Adminis";
+
+// Updated Sessions Management Section Component
+const SessionsManagement = ({
+  directory,
+  approveSession,
+  rejectSession,
+  startSession,
+  deleteSession,
+}) => {
+  const [activeSubTab, setActiveSubTab] = useState("pending"); // pending, approved, all
+  const [zoomLinkInput, setZoomLinkInput] = useState({});
+  const sessions = useManageStore((state) => state.sessions);
+
+  // Filter sessions
+  const pendingSessions = sessions.filter((s) => s.status === "pending");
+  const approvedSessions = sessions.filter((s) => s.status === "approved");
+  const allSessions = sessions;
+
+  const currentSessions =
+    activeSubTab === "pending"
+      ? pendingSessions
+      : activeSubTab === "approved"
+      ? approvedSessions
+      : allSessions;
+
+  const handleStartSession = (sessionId, sessionDate, sessionTime) => {
+    const sessionTimeDate = new Date(`${sessionDate}T${sessionTime}:00`);
+    const now = new Date();
+    if (now >= sessionTimeDate) {
+      startSession(sessionId);
+      alert("Session started! Zoom link generated.");
+    } else {
+      alert(`Session starts at ${sessionTime}. Please wait.`);
+    }
+  };
+
+  const handleApproveSession = (sessionId) => {
+    const zoomLink = zoomLinkInput[sessionId] || "";
+    if (!zoomLink) {
+      alert("Please enter a Zoom link.");
+      return;
+    }
+    if (!/https?:\/\/[^\s]+/.test(zoomLink)) {
+      alert("Please enter a valid Zoom link.");
+      return;
+    }
+    approveSession(sessionId, zoomLink);
+    setZoomLinkInput((prev) => ({ ...prev, [sessionId]: "" }));
+    alert("Session approved! Notification sent to student.");
+  };
+
+  const getStudentName = (studentId) => {
+    const student = directory.find((u) => u.id === studentId);
+    return student ? student.name : "Unknown Student";
+  };
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-white text-2xl font-bold mb-6">Session Management</h2>
+      <div className="flex space-x-4 mb-6">
+        <button
+          onClick={() => setActiveSubTab("pending")}
+          className={`px-4 py-2 rounded-lg ${
+            activeSubTab === "pending"
+              ? "bg-yellow-500 text-gray-900"
+              : "bg-gray-700 text-gray-300"
+          }`}
+        >
+          Pending ({pendingSessions.length})
+        </button>
+        <button
+          onClick={() => setActiveSubTab("approved")}
+          className={`px-4 py-2 rounded-lg ${
+            activeSubTab === "approved"
+              ? "bg-yellow-500 text-gray-900"
+              : "bg-gray-700 text-gray-300"
+          }`}
+        >
+          Approved ({approvedSessions.length})
+        </button>
+        <button
+          onClick={() => setActiveSubTab("all")}
+          className={`px-4 py-2 rounded-lg ${
+            activeSubTab === "all"
+              ? "bg-yellow-500 text-gray-900"
+              : "bg-gray-700 text-gray-300"
+          }`}
+        >
+          All Sessions
+        </button>
+      </div>
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        {currentSessions.length === 0 ? (
+          <p className="text-gray-400 text-center">No sessions found.</p>
+        ) : (
+          <div className="space-y-4">
+            {currentSessions.map((session) => {
+              const studentName = getStudentName(session.studentId);
+              const isTimeReached = () => {
+                const sessionTimeDate = new Date(
+                  `${session.date}T${session.time}:00`
+                );
+                return new Date() >= sessionTimeDate;
+              };
+              return (
+                <div
+                  key={session.id}
+                  className="bg-gray-900 rounded-lg p-4 border border-gray-700 flex items-start justify-between"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="text-white font-semibold">
+                        {session.title}
+                      </h4>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          session.status === "pending"
+                            ? "bg-yellow-500 text-gray-900"
+                            : session.status === "approved"
+                            ? "bg-green-500 text-white"
+                            : session.status === "started"
+                            ? "bg-blue-500 text-white"
+                            : "bg-red-500 text-white"
+                        }`}
+                      >
+                        {session.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <p className="text-gray-400 mb-2">Student: {studentName}</p>
+                    <div className="space-y-1 text-sm text-gray-400">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="w-4 h-4" />
+                        <span>{session.date}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Clock className="w-4 h-4" />
+                        <span>
+                          {session.time} ({session.duration})
+                        </span>
+                      </div>
+                      {session.notes && <p>Notes: {session.notes}</p>}
+                      {session.zoomLink && (
+                        <p className="text-blue-400">
+                          Zoom:{" "}
+                          <a
+                            href={session.zoomLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {session.zoomLink}
+                          </a>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2 ml-4 flex-shrink-0">
+                    {session.status === "pending" && (
+                      <>
+                        <input
+                          type="text"
+                          value={zoomLinkInput[session.id] || ""}
+                          onChange={(e) =>
+                            setZoomLinkInput((prev) => ({
+                              ...prev,
+                              [session.id]: e.target.value,
+                            }))
+                          }
+                          placeholder="Enter Zoom link"
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-1 text-sm"
+                        />
+                        <button
+                          onClick={() => handleApproveSession(session.id)}
+                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm w-full"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => rejectSession(session.id)}
+                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm w-full"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    {session.status === "approved" && (
+                      <button
+                        onClick={() =>
+                          handleStartSession(
+                            session.id,
+                            session.date,
+                            session.time
+                          )
+                        }
+                        disabled={!isTimeReached()}
+                        className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 text-white px-3 py-1 rounded text-sm w-full"
+                      >
+                        {isTimeReached() ? "Start" : "Wait for Time"}
+                      </button>
+                    )}
+                    {session.status === "started" && (
+                      <a
+                        href={session.zoomLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-blue-500 text-white px-3 py-1 rounded text-sm w-full text-center block hover:bg-blue-600"
+                      >
+                        Join Zoom
+                      </a>
+                    )}
+                    <button
+                      onClick={() => deleteSession(session.id)}
+                      className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded text-sm w-full"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const ChatModal = ({ onClose, otherUser, currentUser }) => {
   const [newMessage, setNewMessage] = useState("");
@@ -148,7 +375,10 @@ const NotificationModal = ({
   const notifications = useManageStore
     .getState()
     .notifications.filter(
-      (n) => n.userId === userId && !n.read && n.type === "message"
+      (n) =>
+        n.userId === userId &&
+        !n.read &&
+        (n.type === "message" || n.type === "session_booked")
     );
 
   if (notifications.length === 0) {
@@ -182,18 +412,24 @@ const NotificationModal = ({
       </div>
       <div className="divide-y divide-gray-700">
         {notifications.map((notif) => {
-          const sender = directory.find((u) => u.id === notif.fromUserId);
-          const convKey = [
-            Math.min(userId, notif.fromUserId),
-            Math.max(userId, notif.fromUserId),
-          ].join("-");
-          const messages = conversations[convKey] || [];
-          const message = messages.find((m) => m.id === notif.messageId);
-          const preview = message
-            ? `${message.text.slice(0, 50)}${
-                message.text.length > 50 ? "..." : ""
-              }`
-            : "New message";
+          const senderId = notif.fromUserId;
+          const sender = directory.find((u) => u.id === senderId);
+          let preview;
+          if (notif.type === "message") {
+            const convKey = [
+              Math.min(userId, notif.fromUserId),
+              Math.max(userId, notif.fromUserId),
+            ].join("-");
+            const messages = conversations[convKey] || [];
+            const message = messages.find((m) => m.id === notif.messageId);
+            preview = message
+              ? `${message.text.slice(0, 50)}${
+                  message.text.length > 50 ? "..." : ""
+                }`
+              : "New message";
+          } else {
+            preview = notif.message || "New notification";
+          }
           return (
             <div
               key={notif.id}
@@ -201,7 +437,7 @@ const NotificationModal = ({
               onClick={() => {
                 markNotificationAsRead(notif.id);
                 onClose();
-                if (sender && onOpenChat) {
+                if (notif.type === "message" && sender && onOpenChat) {
                   onOpenChat(sender);
                 }
               }}
@@ -245,7 +481,6 @@ const Administrator = () => {
 
   const handleBellClick = () => {
     setIsNotificationOpen(true);
-    markAsRead(userId);
   };
 
   const handleOpenChatFromNotification = (sender) => {
@@ -263,6 +498,7 @@ const Administrator = () => {
   const roadmapItems = useManageStore((state) => state.roadmapItems);
   const classMaterials = useManageStore((state) => state.classMaterials);
   const programs = useManageStore((state) => state.programs);
+  const sessions = useManageStore((state) => state.sessions);
   const friendRequests = useManageStore((state) => state.friendRequests);
   const pendingRequests = useMemo(
     () => friendRequests.filter((r) => r.toId === 2 && r.status === "pending"),
@@ -339,6 +575,11 @@ const Administrator = () => {
     (state) => state.approveJoinRequest
   );
   const rejectJoinRequest = useManageStore((state) => state.rejectJoinRequest);
+  const approveSession = useManageStore((state) => state.approveSession);
+  const rejectSession = useManageStore((state) => state.rejectSession);
+  const startSession = useManageStore((state) => state.startSession);
+  const updateSession = useManageStore((state) => state.updateSession);
+  const deleteSession = useManageStore((state) => state.deleteSession);
 
   const adminUser = { id: 2, name: "Admin" };
 
@@ -1633,6 +1874,13 @@ const Administrator = () => {
           roadmapItems={roadmapItems}
           classMaterials={classMaterials}
           programs={programs}
+        />
+        <SessionsManagement
+          directory={directory}
+          approveSession={approveSession}
+          rejectSession={rejectSession}
+          startSession={startSession}
+          deleteSession={deleteSession}
         />
         {/* Social Connections Management */}
         <div className="mt-8">

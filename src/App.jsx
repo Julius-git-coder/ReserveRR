@@ -1,5 +1,5 @@
 // App.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Home,
   Users,
@@ -19,6 +19,7 @@ import {
   User,
   Menu,
   X,
+  MessageSquare,
 } from "lucide-react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import useManageStore from "../src/Store/useManageStore"; // Import the store
@@ -160,7 +161,7 @@ const ChatModal = ({ onClose, otherUser, currentUser }) => {
   );
 };
 
-// Notification Modal Component (updated for click handling)
+// Notification Modal Component (updated for all notification types)
 const NotificationModal = ({
   isOpen,
   onClose,
@@ -169,14 +170,13 @@ const NotificationModal = ({
   conversations,
   markNotificationAsRead,
   onOpenChat,
+  sessions, // Pass sessions for session notifications
 }) => {
   if (!isOpen) return null;
 
   const notifications = useManageStore
     .getState()
-    .notifications.filter(
-      (n) => n.userId === userId && !n.read && n.type === "message"
-    );
+    .notifications.filter((n) => n.userId === userId && !n.read);
 
   if (notifications.length === 0) {
     return (
@@ -197,6 +197,26 @@ const NotificationModal = ({
     );
   }
 
+  const handleNotificationClick = (notif) => {
+    markNotificationAsRead(notif.id);
+    onClose();
+    if (notif.type === "message") {
+      const sender = directory.find((u) => u.id === notif.fromUserId);
+      if (sender && onOpenChat) {
+        onOpenChat(sender);
+      }
+    } else if (notif.type.startsWith("session_")) {
+      const session = sessions.find((s) => s.id === notif.sessionId);
+      if (notif.type === "session_started" && session && session.zoomLink) {
+        window.open(session.zoomLink, "_blank");
+      } else if (notif.type === "session_approved") {
+        alert("Session approved! Wait for the start time to join the meeting.");
+      } else if (notif.type === "session_rejected") {
+        alert("Session rejected. Please book a new one if needed.");
+      }
+    }
+  };
+
   return (
     <div className="fixed right-4 top-20 w-80 bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-700 max-h-96 overflow-y-auto">
       <div className="p-4 border-b border-gray-600 flex justify-between items-center">
@@ -209,46 +229,72 @@ const NotificationModal = ({
       </div>
       <div className="divide-y divide-gray-700">
         {notifications.map((notif) => {
-          const sender = directory.find((u) => u.id === notif.fromUserId);
-          const convKey = [
-            Math.min(userId, notif.fromUserId),
-            Math.max(userId, notif.fromUserId),
-          ].join("-");
-          const messages = conversations[convKey] || [];
-          const message = messages.find((m) => m.id === notif.messageId);
-          const preview = message
-            ? `${message.text.slice(0, 50)}${
-                message.text.length > 50 ? "..." : ""
-              }`
-            : "New message";
-          return (
-            <div
-              key={notif.id}
-              className="p-4 hover:bg-gray-700 cursor-pointer"
-              onClick={() => {
-                markNotificationAsRead(notif.id);
-                onClose();
-                if (sender && onOpenChat) {
-                  onOpenChat(sender);
-                }
-              }}
-            >
-              <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
-                  <User className="w-4 h-4 text-gray-300" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-medium truncate">
-                    {sender?.name || "Unknown"}
-                  </p>
-                  <p className="text-gray-300 text-sm truncate">{preview}</p>
-                  <p className="text-gray-500 text-xs mt-1">
-                    {new Date(notif.timestamp).toLocaleString()}
-                  </p>
+          if (notif.type === "message") {
+            const sender = directory.find((u) => u.id === notif.fromUserId);
+            const convKey = [
+              Math.min(userId, notif.fromUserId),
+              Math.max(userId, notif.fromUserId),
+            ].join("-");
+            const messages = conversations[convKey] || [];
+            const message = messages.find((m) => m.id === notif.messageId);
+            const preview = message
+              ? `${message.text.slice(0, 50)}${
+                  message.text.length > 50 ? "..." : ""
+                }`
+              : "New message";
+            return (
+              <div
+                key={notif.id}
+                className="p-4 hover:bg-gray-700 cursor-pointer"
+                onClick={() => handleNotificationClick(notif)}
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User className="w-4 h-4 text-gray-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium truncate">
+                      {sender?.name || "Unknown"}
+                    </p>
+                    <p className="text-gray-300 text-sm truncate">{preview}</p>
+                    <p className="text-gray-500 text-xs mt-1">
+                      {new Date(notif.timestamp).toLocaleString()}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
+            );
+          } else {
+            // Handle session notifications
+            const session = sessions.find((s) => s.id === notif.sessionId);
+            return (
+              <div
+                key={notif.id}
+                className="p-4 hover:bg-gray-700 cursor-pointer"
+                onClick={() => handleNotificationClick(notif)}
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium truncate">
+                      Session Update
+                    </p>
+                    <p className="text-gray-300 text-sm truncate">
+                      {notif.message}
+                    </p>
+                    {session && (
+                      <p className="text-gray-500 text-xs mt-1">
+                        {session.title} on{" "}
+                        {new Date(notif.timestamp).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
         })}
       </div>
     </div>
@@ -271,7 +317,7 @@ const Sidebar = ({
     { id: "exercises", icon: Dumbbell, label: "Exercises" },
     { id: "attendance", icon: UserCheck, label: "Attendance" },
     { id: "grading", icon: Award, label: "Grading" },
-    { id: "100days", icon: Code, label: "100 Days of Code" },
+    { id: "100days", icon: Code, label: "100 Days To BECE" },
     { id: "roadmap", icon: Map, label: "Roadmap" },
     { id: "materials", icon: BookOpen, label: "Class Materials" },
 
@@ -696,13 +742,12 @@ const Dashboard = () => {
   const markNotificationAsRead = useManageStore(
     (state) => state.markNotificationAsRead
   );
-  const { directory, conversations } = useManageStore();
+  const { directory, conversations, sessions } = useManageStore();
   const userId = 1;
   const currentUser = { id: 1, name: "Julius Dagana" };
 
   const handleBellClick = () => {
     setIsNotificationOpen(true);
-    markAsRead(userId);
   };
 
   const handleOpenChatFromNotification = (sender) => {
@@ -813,6 +858,7 @@ const Dashboard = () => {
         conversations={conversations}
         markNotificationAsRead={markNotificationAsRead}
         onOpenChat={handleOpenChatFromNotification}
+        sessions={sessions}
       />
     </div>
   );

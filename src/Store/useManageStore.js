@@ -93,10 +93,7 @@ const useManageStore = create(
         set((state) => ({
           conversations: {
             ...state.conversations,
-            [key]: [
-              ...(state.conversations[key] || []),
-              message,
-            ],
+            [key]: [...(state.conversations[key] || []), message],
           },
         }));
 
@@ -437,11 +434,109 @@ const useManageStore = create(
           posts: [post, ...state.posts],
         })),
 
-      // State for Booked Sessions
+      // State for Booked Sessions (updated)
       sessions: [],
       addSession: (session) =>
+        set((state) => {
+          const newSessions = [session, ...state.sessions];
+          let newNotifications = state.notifications;
+          if (session.status === "pending") {
+            const newNotif = {
+              id: Date.now(),
+              userId: 2,
+              type: "session_booked",
+              fromUserId: session.studentId,
+              sessionId: session.id,
+              message: `New session request: "${session.title}" on ${session.date} at ${session.time}`,
+              read: false,
+              timestamp: new Date().toISOString(),
+            };
+            newNotifications = [...newNotifications, newNotif];
+          }
+          return {
+            sessions: newSessions,
+            notifications: newNotifications,
+          };
+        }),
+      approveSession: (sessionId, zoomLink) =>
+        set((state) => {
+          const session = state.sessions.find((s) => s.id === sessionId);
+          if (!session) return state;
+          const finalZoomLink = zoomLink || "";
+          const newNotif = {
+            id: Date.now(),
+            userId: session.studentId,
+            type: "session_approved",
+            fromUserId: 2,
+            sessionId,
+            message: `Your session "${session.title}" has been approved. Zoom link ready.`,
+            read: false,
+            timestamp: new Date().toISOString(),
+          };
+          return {
+            sessions: state.sessions.map((s) =>
+              s.id === sessionId
+                ? { ...s, status: "approved", zoomLink: finalZoomLink }
+                : s
+            ),
+            notifications: [...state.notifications, newNotif],
+          };
+        }),
+      rejectSession: (sessionId) =>
+        set((state) => {
+          const session = state.sessions.find((s) => s.id === sessionId);
+          if (!session) return state;
+          const newNotif = {
+            id: Date.now(),
+            userId: session.studentId,
+            type: "session_rejected",
+            fromUserId: 2,
+            sessionId,
+            message: `Your session "${session.title}" has been rejected.`,
+            read: false,
+            timestamp: new Date().toISOString(),
+          };
+          return {
+            sessions: state.sessions.map((s) =>
+              s.id === sessionId ? { ...s, status: "rejected" } : s
+            ),
+            notifications: [...state.notifications, newNotif],
+          };
+        }),
+      startSession: (sessionId) =>
+        set((state) => {
+          const session = state.sessions.find((s) => s.id === sessionId);
+          if (!session || session.status !== "approved") return state;
+          const finalZoomLink =
+            session.zoomLink || `https://zoom.us/j/${Date.now()}-${sessionId}`;
+          const newNotif = {
+            id: Date.now(),
+            userId: session.studentId,
+            type: "session_started",
+            fromUserId: 2,
+            sessionId,
+            message: `Your session "${session.title}" has started! Join now.`,
+            read: false,
+            timestamp: new Date().toISOString(),
+          };
+          return {
+            sessions: state.sessions.map((s) =>
+              s.id === sessionId
+                ? { ...s, status: "started", zoomLink: finalZoomLink }
+                : s
+            ),
+            notifications: [...state.notifications, newNotif],
+          };
+        }),
+      updateSession: (sessionId, updates) =>
         set((state) => ({
-          sessions: [session, ...state.sessions],
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, ...updates } : s
+          ),
+        })),
+      deleteSession: (sessionId) =>
+        set((state) => ({
+          sessions: state.sessions.filter((s) => s.id !== sessionId),
         })),
 
       // State for Attendance
