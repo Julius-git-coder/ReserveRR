@@ -21,8 +21,8 @@ const DaysOfLearning = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-white text-3xl font-bold">100 Days of Code</h1>
-        <p className="text-gray-400 mt-2">Track your coding journey</p>
+        <h1 className="text-white text-3xl font-bold">100 Days Of Excellence</h1>
+        <p className="text-gray-400 mt-2">Track your learning journey</p>
       </div>
 
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">

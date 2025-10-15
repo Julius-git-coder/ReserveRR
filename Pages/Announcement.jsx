@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Bell, Clock, User } from "lucide-react";
+import {  Clock, User } from "lucide-react";
 import useManageStore from "../src/Store/useManageStore";
 
 const Announcement = () => {
@@ -22,7 +22,7 @@ const Announcement = () => {
       <div className="space-y-4">
         {announcements.length === 0 ? (
           <div className="text-center py-12">
-            <Bell className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+          
             <p className="text-gray-400">No announcements available.</p>
           </div>
         ) : (
@@ -62,7 +62,7 @@ const Announcement = () => {
                     </span>
                   </div>
                 </div>
-                <Bell className="w-5 h-5 text-gray-400" />
+             
               </div>
             </div>
           ))

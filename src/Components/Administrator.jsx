@@ -1,4 +1,4 @@
-
+// Components/Administrator.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Users,
@@ -11,6 +11,7 @@ import {
   Bell,
   Calendar,
   Clock,
+  Map,
 } from "lucide-react";
 import useManageStore from "../Store/useManageStore";
 import Admini from "./Admini";
@@ -242,6 +243,95 @@ const SessionsManagement = ({
   );
 };
 
+// New Roadmap Management Section Component
+const RoadmapManagement = ({
+  roadmapItems,
+  setCurrentWeek,
+  markWeekPassed,
+}) => {
+  if (roadmapItems.length === 0) {
+    return (
+      <div className="mt-8">
+        <h2 className="text-white text-2xl font-bold mb-6">
+          Roadmap Management
+        </h2>
+        <p className="text-gray-400">No roadmap items found.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-white text-2xl font-bold mb-6">Roadmap Management</h2>
+      <div className="space-y-6">
+        {roadmapItems.map((item) => (
+          <div
+            key={item.id}
+            className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-white font-semibold text-lg">
+                {item.phase} - {item.term} ({item.status})
+              </h3>
+            </div>
+            {item.weeks && item.weeks.length > 0 ? (
+              <div className="space-y-4">
+                {item.weeks.map((week, weekIndex) => (
+                  <div
+                    key={weekIndex}
+                    className="flex items-center justify-between p-4 bg-gray-900 rounded border border-gray-700"
+                  >
+                    <div className="flex-1">
+                      <p className="text-white font-medium">
+                        Week {week.weekNumber}: {week.topic}
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        Subtopics: {week.subTopics?.length || 0} | Status:{" "}
+                        {week.current
+                          ? "Current"
+                          : week.next
+                          ? "Next"
+                          : week.passed
+                          ? "Passed"
+                          : "Future"}
+                      </p>
+                    </div>
+                    <div className="space-x-2 flex-shrink-0">
+                      {week.current ? (
+                        <button
+                          onClick={() => setCurrentWeek(item.id, null)}
+                          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm font-semibold"
+                        >
+                          Unset Current
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setCurrentWeek(item.id, weekIndex)}
+                          className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded text-sm font-semibold"
+                        >
+                          Set Current
+                        </button>
+                      )}
+                      <button
+                        onClick={() => markWeekPassed(item.id, weekIndex)}
+                        className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded text-sm"
+                      >
+                        Passed
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-400">No weeks added yet.</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const ChatModal = ({ onClose, otherUser, currentUser }) => {
   const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState([]);
@@ -379,7 +469,8 @@ const NotificationModal = ({
         n.userId === userId &&
         !n.read &&
         (n.type === "message" || n.type === "session_booked")
-    );
+    )
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   if (notifications.length === 0) {
     return (
@@ -479,6 +570,12 @@ const Administrator = () => {
     (state) => state.markNotificationAsRead
   );
 
+  // 100 Days of Code state
+  const daysOfLearning = useManageStore((state) => state.daysOfLearning);
+  const updateDaysOfLearning = useManageStore(
+    (state) => state.updateDaysOfLearning
+  );
+
   const handleBellClick = () => {
     setIsNotificationOpen(true);
   };
@@ -555,6 +652,7 @@ const Administrator = () => {
   );
   const deleteSubTopic = useManageStore((state) => state.deleteSubTopic);
   const setCurrentWeek = useManageStore((state) => state.setCurrentWeek);
+  const markWeekPassed = useManageStore((state) => state.markWeekPassed);
   const addClassMaterial = useManageStore((state) => state.addClassMaterial);
   const updateClassMaterial = useManageStore(
     (state) => state.updateClassMaterial
@@ -800,7 +898,12 @@ const Administrator = () => {
         break;
       }
       case "exercise": {
-        if (!formData.title || !formData.points || !formData.studentId) {
+        if (
+          !formData.title ||
+          !formData.dueDate ||
+          !formData.points ||
+          !formData.studentId
+        ) {
           alert("Please fill in all required fields.");
           return;
         }
@@ -814,6 +917,7 @@ const Administrator = () => {
           id: newId(exercises),
           title: formData.title,
           description: formData.description || "",
+          dueDate: formData.dueDate,
           points,
           studentId: parseInt(formData.studentId),
           status: "pending",
@@ -825,7 +929,12 @@ const Administrator = () => {
         break;
       }
       case "exercise-edit": {
-        if (!formData.title || !formData.points || !formData.studentId) {
+        if (
+          !formData.title ||
+          !formData.dueDate ||
+          !formData.points ||
+          !formData.studentId
+        ) {
           alert("Please fill in all required fields.");
           return;
         }
@@ -837,6 +946,7 @@ const Administrator = () => {
         updateExercise(formData.id, {
           title: formData.title,
           description: formData.description || "",
+          dueDate: formData.dueDate,
           points,
           studentId: parseInt(formData.studentId),
         });
@@ -1326,6 +1436,18 @@ const Administrator = () => {
             </div>
             <div>
               <label className="block text-gray-400 text-sm mb-2">
+                Due Date *
+              </label>
+              <input
+                type="date"
+                value={formData.dueDate || ""}
+                onChange={(e) => handleFormChange("dueDate", e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
                 Points *
               </label>
               <input
@@ -1526,11 +1648,10 @@ const Administrator = () => {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-gray-400 text-sm mb-2">
-                Phase *
-              </label>
+              <label className="block text-gray-400 text-sm mb-2">Term *</label>
               <input
                 type="text"
+                placeholder="eg: First_Term"
                 value={formData.phase || ""}
                 onChange={(e) => handleFormChange("phase", e.target.value)}
                 className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
@@ -1538,9 +1659,12 @@ const Administrator = () => {
               />
             </div>
             <div>
-              <label className="block text-gray-400 text-sm mb-2">Term *</label>
+              <label className="block text-gray-400 text-sm mb-2">
+                Phase (no_ of weeks) *
+              </label>
               <input
                 type="text"
+                placeholder="eg: 13-weeks "
                 value={formData.term || ""}
                 onChange={(e) => handleFormChange("term", e.target.value)}
                 className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
@@ -1798,6 +1922,12 @@ const Administrator = () => {
     }
   };
 
+  // 100 Days To BECE logic
+  const todayStr = new Date().toISOString().split("T")[0];
+  const isTodayCompleted = daysOfLearning.lastCompletedDate === todayStr;
+  const isChallengeCompleted =
+    daysOfLearning.completedDays >= daysOfLearning.totalDays;
+
   return (
     <div className="bg-gray-900 min-h-screen">
       {/* Header */}
@@ -1882,6 +2012,89 @@ const Administrator = () => {
           startSession={startSession}
           deleteSession={deleteSession}
         />
+        <RoadmapManagement
+          roadmapItems={roadmapItems}
+          setCurrentWeek={setCurrentWeek}
+          markWeekPassed={markWeekPassed}
+        />
+        {/* 100 Days To BECE Management */}
+        <div className="mt-8">
+          <h2 className="text-white text-2xl font-bold mb-6">
+            100 Days To BECE
+          </h2>
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-white text-lg font-semibold">
+                  Auto-Progress for Daily Readings
+                </h3>
+                <p className="text-gray-400">
+                  Enable automatic daily completion and ticking of boxes
+                </p>
+              </div>
+              <button
+                onClick={() =>
+                  updateDaysOfLearning({ isActive: !daysOfLearning.isActive })
+                }
+                className={`px-4 py-2 rounded-lg font-semibold ${
+                  daysOfLearning.isActive
+                    ? "bg-green-500 text-white"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                {daysOfLearning.isActive ? "Active" : "Inactive"}
+              </button>
+            </div>
+            <div className="space-y-2 text-gray-400">
+              <p>
+                Completed Days: {daysOfLearning.completedDays} of{" "}
+                {daysOfLearning.totalDays}
+              </p>
+              <p>
+                Last Completed:{" "}
+                {daysOfLearning.lastCompletedDate || "Not started"}
+              </p>
+              <p>Today's Status: {isTodayCompleted ? "Ticked" : "Pending"}</p>
+            </div>
+            <button
+              onClick={() => {
+                if (isTodayCompleted) {
+                  alert("Already ticked for today!");
+                  return;
+                }
+                if (isChallengeCompleted) {
+                  alert("Challenge completed!");
+                  return;
+                }
+                updateDaysOfLearning({
+                  completedDays: daysOfLearning.completedDays + 1,
+                  lastCompletedDate: todayStr,
+                  activities: [
+                    ...daysOfLearning.activities,
+                    {
+                      day: daysOfLearning.completedDays + 1,
+                      content: "Manually ticked by admin",
+                      timestamp: new Date().toISOString(),
+                    },
+                  ],
+                });
+                alert("Day ticked successfully!");
+              }}
+              disabled={isTodayCompleted || isChallengeCompleted}
+              className={`mt-4 px-4 py-2 rounded-lg font-semibold ${
+                isTodayCompleted || isChallengeCompleted
+                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  : "bg-yellow-500 hover:bg-yellow-600 text-gray-900"
+              }`}
+            >
+              {isChallengeCompleted
+                ? "Challenge Completed"
+                : isTodayCompleted
+                ? "Already Ticked Today"
+                : "Manually Tick Next Day"}
+            </button>
+          </div>
+        </div>
         {/* Social Connections Management */}
         <div className="mt-8">
           <h2 className="text-white text-2xl font-bold mb-6">

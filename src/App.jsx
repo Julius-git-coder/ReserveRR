@@ -171,12 +171,21 @@ const NotificationModal = ({
   markNotificationAsRead,
   onOpenChat,
   sessions, // Pass sessions for session notifications
+  announcements,
+  assignments,
+  exercises,
+  projects,
+  attendance,
+  roadmapItems,
+  classMaterials,
+  programs,
 }) => {
   if (!isOpen) return null;
 
   const notifications = useManageStore
     .getState()
-    .notifications.filter((n) => n.userId === userId && !n.read);
+    .notifications.filter((n) => n.userId === userId && !n.read)
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   if (notifications.length === 0) {
     return (
@@ -214,6 +223,28 @@ const NotificationModal = ({
       } else if (notif.type === "session_rejected") {
         alert("Session rejected. Please book a new one if needed.");
       }
+    } else if (notif.type === "new_announcement") {
+      alert(`New announcement: Check the Announcements tab.`);
+    } else if (notif.type === "new_assignment") {
+      alert(`New assignment added. Check Assignments.`);
+    } else if (notif.type === "new_exercise") {
+      alert(`New exercise added. Check Exercises.`);
+    } else if (notif.type === "new_project") {
+      alert(`New project added. Check Projects.`);
+    } else if (notif.type === "new_attendance") {
+      alert(`Attendance updated. Check Attendance.`);
+    } else if (notif.type === "new_roadmap") {
+      alert(`New roadmap added. Check Roadmap.`);
+    } else if (notif.type === "new_week") {
+      alert(`New week added to roadmap. Check Roadmap.`);
+    } else if (notif.type === "new_subtopic") {
+      alert(`New subtopic added. Check Roadmap.`);
+    } else if (notif.type === "new_class_material") {
+      alert(`New class material added. Check Class Materials.`);
+    } else if (notif.type === "new_program") {
+      alert(`New program available. Check Available Programs.`);
+    } else if (notif.type === "new_milestone") {
+      alert(`New milestone added to program. Check Available Programs.`);
     }
   };
 
@@ -264,7 +295,7 @@ const NotificationModal = ({
                 </div>
               </div>
             );
-          } else {
+          } else if (notif.type.startsWith("session_")) {
             // Handle session notifications
             const session = sessions.find((s) => s.id === notif.sessionId);
             return (
@@ -290,6 +321,32 @@ const NotificationModal = ({
                         {new Date(notif.timestamp).toLocaleString()}
                       </p>
                     )}
+                  </div>
+                </div>
+              </div>
+            );
+          } else {
+            // Handle other admin notifications
+            return (
+              <div
+                key={notif.id}
+                className="p-4 hover:bg-gray-700 cursor-pointer"
+                onClick={() => handleNotificationClick(notif)}
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-yellow-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Bell className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium truncate">
+                      Admin Update
+                    </p>
+                    <p className="text-gray-300 text-sm truncate">
+                      {notif.message}
+                    </p>
+                    <p className="text-gray-500 text-xs mt-1">
+                      {new Date(notif.timestamp).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -387,11 +444,17 @@ const ProgressCard = ({
   current,
   total,
   color = "bg-yellow-500",
+  onClick,
 }) => {
   const percentage = total > 0 ? (current / total) * 100 : 0;
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+    <div
+      className={`bg-gray-800 rounded-lg p-6 border border-gray-700 cursor-pointer hover:bg-gray-700 transition-colors ${
+        onClick ? "cursor-pointer" : ""
+      }`}
+      onClick={onClick}
+    >
       <div className="flex items-start space-x-3 mb-4">
         <Icon className="w-6 h-6 text-gray-400 flex-shrink-0 mt-0.5" />
         <h3 className="text-white font-semibold flex-1 min-w-0 break-words">
@@ -440,7 +503,14 @@ const OverallProgress = ({ current, total }) => {
 };
 
 // Welcome Section Component - Now partially dynamic from roadmap
-const WelcomeSection = ({ name, currentWeekData, nextWeekData }) => {
+const WelcomeSection = ({
+  name,
+  currentWeekData,
+  nextWeekData,
+  setActiveTab,
+}) => {
+  const handleRoadmapClick = () => setActiveTab("roadmap");
+
   return (
     <div className="mb-8">
       <div className="flex items-center space-x-4 mb-6">
@@ -455,36 +525,24 @@ const WelcomeSection = ({ name, currentWeekData, nextWeekData }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <div className="flex items-center space-x-2 mb-4">
-            <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-            <h3 className="text-white font-semibold text-lg">
-              This Week's Focus
-            </h3>
-          </div>
-          <div className="inline-block bg-yellow-500 text-gray-900 px-3 py-1 rounded-full text-xs font-semibold mb-4">
-            {currentWeekData?.phase || "Backend"} -{" "}
-            {currentWeekData?.term || "NodeJS"} - Week{" "}
-            {currentWeekData?.weekNumber || 4}
-          </div>
-          <ul className="space-y-3">
-            {currentWeekData?.subTopics?.slice(0, 3).map((sub, idx) => (
-              <li
-                key={idx}
-                className="flex items-center space-x-2 text-gray-300"
-              >
-                <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
-                  <span className="text-gray-900 text-xs">✓</span>
-                </div>
-                <span>{sub.name}</span>
-              </li>
-            )) ||
-              [
-                { name: "Postman" },
-                { name: "REST architecture" },
-                { name: "Getting organized - controllers, routes, models" },
-              ].map((item, idx) => (
+      {currentWeekData && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div
+            className="bg-gray-800 rounded-lg p-6 border border-gray-700 cursor-pointer hover:bg-gray-700 transition-colors"
+            onClick={handleRoadmapClick}
+          >
+            <div className="flex items-center space-x-2 mb-4">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+              <h3 className="text-white font-semibold text-lg">
+                This Week's Focus
+              </h3>
+            </div>
+            <div className="inline-block bg-yellow-500 text-gray-900 px-3 py-1 rounded-full text-xs font-semibold mb-4">
+              {currentWeekData.phase} - {currentWeekData.term} - Week{" "}
+              {currentWeekData.weekNumber}
+            </div>
+            <ul className="space-y-3">
+              {currentWeekData.subTopics?.slice(0, 3).map((sub, idx) => (
                 <li
                   key={idx}
                   className="flex items-center space-x-2 text-gray-300"
@@ -492,76 +550,237 @@ const WelcomeSection = ({ name, currentWeekData, nextWeekData }) => {
                   <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
                     <span className="text-gray-900 text-xs">✓</span>
                   </div>
-                  <span>{item.name}</span>
+                  <span>{sub.name}</span>
                 </li>
               ))}
-          </ul>
-        </div>
+            </ul>
+          </div>
 
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <div className="flex items-center space-x-2 mb-4">
-            <div className="w-6 h-6 text-gray-400">⏰</div>
-            <h3 className="text-white font-semibold text-lg">
-              Next Week's Topics
-            </h3>
-          </div>
-          <div className="inline-block bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold mb-4">
-            {nextWeekData?.phase || "Backend"} -{" "}
-            {nextWeekData?.term || "NodeJS"} - Week{" "}
-            {nextWeekData?.weekNumber || 5}
-          </div>
-          <ul className="space-y-3">
-            {nextWeekData?.subTopics?.slice(0, 2).map((sub, idx) => (
-              <li
-                key={idx}
-                className="flex items-center space-x-2 text-gray-400"
-              >
-                <div className="w-5 h-5 border-2 border-gray-600 rounded-full" />
-                <span>{sub.name}</span>
-              </li>
-            )) ||
-              [
-                { name: "Databases - SQL and NoSQL" },
-                { name: "Setting up Mongodb" },
-              ].map((item, idx) => (
-                <li
-                  key={idx}
-                  className="flex items-center space-x-2 text-gray-400"
-                >
-                  <div className="w-5 h-5 border-2 border-gray-600 rounded-full" />
-                  <span>{item.name}</span>
-                </li>
-              ))}
-          </ul>
+          {nextWeekData && (
+            <div
+              className="bg-gray-800 rounded-lg p-6 border border-gray-700 cursor-pointer hover:bg-gray-700 transition-colors"
+              onClick={handleRoadmapClick}
+            >
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-6 h-6 text-gray-400">⏰</div>
+                <h3 className="text-white font-semibold text-lg">
+                  Next Week's Topics
+                </h3>
+              </div>
+              <div className="inline-block bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold mb-4">
+                {nextWeekData.phase} - {nextWeekData.term} - Week{" "}
+                {nextWeekData.weekNumber}
+              </div>
+              <ul className="space-y-3">
+                {nextWeekData.subTopics?.slice(0, 2).map((sub, idx) => (
+                  <li
+                    key={idx}
+                    className="flex items-center space-x-2 text-gray-400"
+                  >
+                    <div className="w-5 h-5 border-2 border-gray-600 rounded-full" />
+                    <span>{sub.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-// Recent Resources Component
-const RecentResources = () => {
+// Recent Updates Component - Dynamic summary from all pages
+const RecentUpdates = ({ setActiveTab }) => {
+  const {
+    announcements,
+    assignments,
+    exercises,
+    projects,
+    sessions,
+    classMaterials,
+    daysOfLearning,
+    roadmapItems,
+  } = useManageStore();
+
+  const studentId = 1;
+
+  // Recent Announcements (last 2)
+  const recentAnnouncements = announcements.slice(0, 2);
+
+  // Pending/Submitted Assignments, Exercises, Projects (last 3 combined)
+  const pendingAssignments = assignments
+    .filter((a) => a.studentId === studentId && a.status !== "graded")
+    .map((a) => ({ ...a, type: "assignment" }))
+    .slice(0, 1);
+  const pendingExercises = exercises
+    .filter((e) => e.studentId === studentId && e.status !== "graded")
+    .map((e) => ({ ...e, type: "exercise" }))
+    .slice(0, 1);
+  const pendingProjects = projects
+    .filter((p) => p.studentId === studentId && p.status !== "graded")
+    .map((p) => ({ ...p, type: "project" }))
+    .slice(0, 1);
+  const recentTasks = [
+    ...pendingAssignments,
+    ...pendingExercises,
+    ...pendingProjects,
+  ].slice(0, 3);
+
+  // Upcoming Sessions (next 2)
+  const now = new Date();
+  const upcomingSessions = sessions
+    .filter(
+      (s) =>
+        s.studentId === studentId &&
+        (s.status === "approved" || s.status === "started") &&
+        new Date(`${s.date}T${s.time}:00`) > now
+    )
+    .slice(0, 2);
+
+  // Recent Class Materials (last 1)
+  const recentMaterials = classMaterials.slice(-1);
+
+  // 100 Days Progress
+  const daysProgress = `${daysOfLearning.completedDays} / ${daysOfLearning.totalDays} days`;
+
+  // Current Roadmap Week - Fixed to filter !passed
+  const currentRoadmapWeek =
+    roadmapItems
+      .flatMap(
+        (item) => item.weeks?.filter((w) => w.current && !w.passed) || []
+      )
+      .slice(0, 1)[0]?.topic || "No current week";
+
+  const handleTaskClick = (task) => {
+    const tabMap = {
+      assignment: "assignments",
+      exercise: "exercises",
+      project: "projects",
+    };
+    setActiveTab(tabMap[task.type] || "assignments");
+  };
+
+  const handleAnnouncementClick = () => setActiveTab("announcements");
+  const handleSessionClick = () => setActiveTab("session");
+  const handleDaysClick = () => setActiveTab("100days");
+  const handleRoadmapClick = () => setActiveTab("roadmap");
+  const handleMaterialsClick = () => setActiveTab("materials");
+
   return (
-    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-      <h3 className="text-white font-semibold text-lg mb-2">
-        Recent Resources
-      </h3>
-      <p className="text-gray-400 text-sm mb-6">
-        Quick access to recently added materials.
-      </p>
-      <div className="text-center py-8">
-        <p className="text-gray-500 mb-4">No resources have been added yet.</p>
-        <button className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center space-x-2 mx-auto">
-          <span>Go to Resource Center</span>
-          <span>→</span>
-        </button>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      {/* Recent Announcements */}
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h3 className="text-white font-semibold text-lg mb-4 flex items-center space-x-2">
+          <Bell className="w-5 h-5 text-yellow-500" />
+          <span>Recent Announcements</span>
+        </h3>
+        {recentAnnouncements.length > 0 ? (
+          <div className="space-y-3">
+            {recentAnnouncements.map((ann) => (
+              <div
+                key={ann.id}
+                className="text-sm cursor-pointer hover:text-yellow-400 transition-colors"
+                onClick={handleAnnouncementClick}
+              >
+                <p className="text-gray-300 font-medium">{ann.title}</p>
+                <p className="text-gray-500">{ann.content.slice(0, 50)}...</p>
+                <p className="text-xs text-gray-400 mt-1">{ann.date}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-400">No recent announcements.</p>
+        )}
+      </div>
+
+      {/* Recent Tasks */}
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h3 className="text-white font-semibold text-lg mb-4 flex items-center space-x-2">
+          <FileText className="w-5 h-5 text-yellow-500" />
+          <span>Pending Tasks</span>
+        </h3>
+        {recentTasks.length > 0 ? (
+          <div className="space-y-2">
+            {recentTasks.map((task) => (
+              <div
+                key={task.id}
+                className="text-sm border-b border-gray-700 pb-2 cursor-pointer hover:text-yellow-400 transition-colors"
+                onClick={() => handleTaskClick(task)}
+              >
+                <p className="text-gray-300">{task.title}</p>
+                <p className="text-xs text-gray-500">
+                  Due: {task.dueDate || "No due date"}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-400">No pending tasks.</p>
+        )}
+      </div>
+
+      {/* Upcoming Sessions */}
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h3 className="text-white font-semibold text-lg mb-4 flex items-center space-x-2">
+          <Calendar className="w-5 h-5 text-yellow-500" />
+          <span>Upcoming Sessions</span>
+        </h3>
+        {upcomingSessions.length > 0 ? (
+          <div className="space-y-2">
+            {upcomingSessions.map((session) => (
+              <div
+                key={session.id}
+                className="text-sm cursor-pointer hover:text-yellow-400 transition-colors"
+                onClick={handleSessionClick}
+              >
+                <p className="text-gray-300">{session.title}</p>
+                <p className="text-xs text-gray-500">
+                  {session.date} at {session.time}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-400">No upcoming sessions.</p>
+        )}
+      </div>
+
+      {/* 100 Days & Roadmap */}
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h3 className="text-white font-semibold text-lg mb-4 flex items-center space-x-2">
+          <Code className="w-5 h-5 text-yellow-500" />
+          <span>Learning Progress</span>
+        </h3>
+        <div className="space-y-2 text-sm">
+          <p
+            className="text-gray-300 cursor-pointer hover:text-yellow-400 transition-colors"
+            onClick={handleDaysClick}
+          >
+            100 Days: {daysProgress}
+          </p>
+          <p
+            className="text-gray-300 cursor-pointer hover:text-yellow-400 transition-colors"
+            onClick={handleRoadmapClick}
+          >
+            Current Week: {currentRoadmapWeek}
+          </p>
+          {recentMaterials.length > 0 && (
+            <p
+              className="text-gray-500 cursor-pointer hover:text-yellow-400 transition-colors"
+              onClick={handleMaterialsClick}
+            >
+              New Material: {recentMaterials[0].title}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
 // Performance Hub Component - Now fully dynamic from store
-const PerformanceHub = () => {
+const PerformanceHub = ({ setActiveTab }) => {
   const {
     attendance,
     assignments,
@@ -572,13 +791,13 @@ const PerformanceHub = () => {
 
   const studentId = 1; // Hardcoded for demo
 
-  // Attendance: Assume 1 point per present session, max 50
+  // Attendance: Assume 1 point per present session, total based on total attendance records added by admin
   const studentAttendance = attendance.filter((a) => a.studentId === studentId);
   const presentAttendance = studentAttendance.filter(
     (a) => a.status === "present"
   );
   const attendanceCurrent = presentAttendance.length;
-  const attendanceTotal = 50; // Fixed max
+  const attendanceTotal = studentAttendance.length;
 
   // Assignments: Sum grades for graded, total points for all
   const studentAssignments = assignments.filter(
@@ -605,14 +824,14 @@ const PerformanceHub = () => {
   );
   const exercisesTotal = studentExercises.reduce((sum, e) => sum + e.points, 0);
 
-  // Projects: Sum grades for graded, fixed total
+  // Projects: Sum grades for graded, total points from all projects set by admin
   const studentProjects = projects.filter((p) => p.studentId === studentId);
   const gradedProjects = studentProjects.filter((p) => p.status === "graded");
   const projectsCurrent = gradedProjects.reduce(
     (sum, p) => sum + (p.grade || 0),
     0
   );
-  const projectsTotal = 50; // Fixed for weekly projects
+  const projectsTotal = studentProjects.reduce((sum, p) => sum + p.points, 0);
 
   // Soft Skills & Product Training: From programs milestones completed
   const enrolledPrograms = programs.filter((p) =>
@@ -621,7 +840,8 @@ const PerformanceHub = () => {
   const softSkillsCurrent = enrolledPrograms.reduce((sum, p) => {
     return sum + (p.milestones?.filter((m) => m.completed).length || 0);
   }, 0);
-  const softSkillsTotal = 6;
+  const softSkillsTotal =
+    enrolledPrograms.reduce((sum, p) => sum + (p.totalMilestones || 0), 0) || 6;
 
   // Overall
   const overallCurrent =
@@ -655,24 +875,28 @@ const PerformanceHub = () => {
           icon={UserCheck}
           current={attendanceCurrent}
           total={attendanceTotal}
+          onClick={() => setActiveTab("attendance")}
         />
         <ProgressCard
           title="Class Assignments"
           icon={FileText}
           current={assignmentsCurrent}
           total={assignmentsTotal}
+          onClick={() => setActiveTab("assignments")}
         />
         <ProgressCard
           title="Class Exercises"
           icon={Dumbbell}
           current={exercisesCurrent}
           total={exercisesTotal}
+          onClick={() => setActiveTab("exercises")}
         />
         <ProgressCard
           title="Projects"
           icon={FolderOpen}
           current={projectsCurrent}
           total={projectsTotal}
+          onClick={() => setActiveTab("projects")}
         />
         <ProgressCard
           title="Soft Skills & Product Training"
@@ -680,6 +904,7 @@ const PerformanceHub = () => {
           current={softSkillsCurrent}
           total={softSkillsTotal}
           color="bg-blue-500"
+          onClick={() => setActiveTab("workready")}
         />
       </div>
     </div>
@@ -687,17 +912,19 @@ const PerformanceHub = () => {
 };
 
 // Dashboard Content Component - Now passes dynamic data to WelcomeSection
-const DashboardContent = () => {
+const DashboardContent = ({ setActiveTab }) => {
   const { profile } = useManageStore();
   const { roadmapItems } = useManageStore();
   const studentId = 1;
 
-  // Find current and next week data from roadmap
+  // Find current and next week data from roadmap - Fixed to filter !passed
   let currentWeekData = null;
   let nextWeekData = null;
   roadmapItems.forEach((item) => {
     if (item.weeks) {
-      const currentWeekIndex = item.weeks.findIndex((w) => w.current);
+      const currentWeekIndex = item.weeks.findIndex(
+        (w) => w.current && !w.passed
+      );
       if (currentWeekIndex !== -1) {
         currentWeekData = {
           phase: item.phase,
@@ -706,7 +933,7 @@ const DashboardContent = () => {
           subTopics: item.weeks[currentWeekIndex].subTopics || [],
         };
       }
-      const nextWeekIndex = item.weeks.findIndex((w) => w.next);
+      const nextWeekIndex = item.weeks.findIndex((w) => w.next && !w.passed);
       if (nextWeekIndex !== -1) {
         nextWeekData = {
           phase: item.phase,
@@ -724,9 +951,10 @@ const DashboardContent = () => {
         name={profile.name || "Julius Dagana"}
         currentWeekData={currentWeekData}
         nextWeekData={nextWeekData}
+        setActiveTab={setActiveTab}
       />
-      <PerformanceHub />
-      <RecentResources />
+      <PerformanceHub setActiveTab={setActiveTab} />
+      <RecentUpdates setActiveTab={setActiveTab} />
     </div>
   );
 };
@@ -742,7 +970,19 @@ const Dashboard = () => {
   const markNotificationAsRead = useManageStore(
     (state) => state.markNotificationAsRead
   );
-  const { directory, conversations, sessions } = useManageStore();
+  const {
+    directory,
+    conversations,
+    sessions,
+    announcements,
+    assignments,
+    exercises,
+    projects,
+    attendance,
+    roadmapItems,
+    classMaterials,
+    programs,
+  } = useManageStore();
   const userId = 1;
   const currentUser = { id: 1, name: "Julius Dagana" };
 
@@ -758,7 +998,7 @@ const Dashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <DashboardContent />;
+        return <DashboardContent setActiveTab={setActiveTab} />;
       case "connect":
         return <CampusConnect />;
       case "announcements":
@@ -788,7 +1028,7 @@ const Dashboard = () => {
       case "profile":
         return <Profile />;
       default:
-        return <DashboardContent />;
+        return <DashboardContent setActiveTab={setActiveTab} />;
     }
   };
 
@@ -859,6 +1099,14 @@ const Dashboard = () => {
         markNotificationAsRead={markNotificationAsRead}
         onOpenChat={handleOpenChatFromNotification}
         sessions={sessions}
+        announcements={announcements}
+        assignments={assignments}
+        exercises={exercises}
+        projects={projects}
+        attendance={attendance}
+        roadmapItems={roadmapItems}
+        classMaterials={classMaterials}
+        programs={programs}
       />
     </div>
   );

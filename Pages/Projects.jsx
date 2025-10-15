@@ -55,21 +55,10 @@ const Projects = () => {
           }`}
           aria-label="Filter pending projects"
         >
-          Pending (
+          In Progress (
           {studentProjects.filter((a) => a.status === "pending").length})
         </button>
-        <button
-          onClick={() => setFilter("in-progress")}
-          className={`px-4 py-2 rounded-lg transition-colors ${
-            filter === "in-progress"
-              ? "bg-yellow-500 text-gray-900"
-              : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-          }`}
-          aria-label="Filter in-progress projects"
-        >
-          In Progress (
-          {studentProjects.filter((a) => a.status === "in-progress").length})
-        </button>
+      
         <button
           onClick={() => setFilter("submitted")}
           className={`px-4 py-2 rounded-lg transition-colors ${
