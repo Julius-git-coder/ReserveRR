@@ -1,4 +1,4 @@
-// Updated Login.jsx - Integrated Firebase Login
+// Login.jsx
 import React, { useState } from "react";
 import { Code, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -26,18 +26,15 @@ const Login = () => {
 
   const handleRoleLogin = async (role) => {
     setError("");
-
     if (!formData.email || !formData.password) {
       setError("Please fill in all fields before selecting a role");
       return;
     }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError("Please enter a valid email address");
       return;
     }
-
     setIsLoading(true);
     try {
       await login(formData.email, formData.password);
@@ -92,7 +89,6 @@ const Login = () => {
             </div>
           </div>
         </div>
-
         <div className="w-full">
           <div className="bg-gray-800 rounded-2xl p-8 border border-gray-700 shadow-2xl">
             <div className="lg:hidden flex items-center justify-center space-x-3 mb-8">
@@ -103,7 +99,6 @@ const Login = () => {
                 GradeA<span className="text-yellow-500">+</span>
               </h1>
             </div>
-
             <div className="mb-8">
               <h2 className="text-white text-3xl font-bold mb-2">
                 Welcome Back
@@ -112,14 +107,12 @@ const Login = () => {
                 Sign in to continue to your dashboard
               </p>
             </div>
-
             {error && (
               <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4 mb-6 flex items-center space-x-3">
                 <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
                 <p className="text-red-500 text-sm">{error}</p>
               </div>
             )}
-
             <div className="space-y-6">
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">
@@ -139,7 +132,6 @@ const Login = () => {
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">
                   Password
@@ -169,7 +161,6 @@ const Login = () => {
                   </button>
                 </div>
               </div>
-
               <div className="flex items-center justify-between">
                 <label className="flex items-center space-x-2 cursor-pointer">
                   <input
@@ -230,7 +221,6 @@ const Login = () => {
                 <span className="px-4 bg-gray-800 text-gray-400">or</span>
               </div>
             </div>
-
             <div className="text-center">
               <p className="text-gray-400">
                 Don't have an account?{" "}
@@ -243,7 +233,6 @@ const Login = () => {
               </p>
             </div>
           </div>
-
           <div className="text-center mt-6">
             <p className="text-gray-500 text-sm">
               © 2025 GradeA+. All rights reserved.
