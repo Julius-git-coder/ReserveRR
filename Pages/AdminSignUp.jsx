@@ -487,7 +487,7 @@ const AdminSignUp = () => {
                   <p className="text-gray-400 text-xs">
                     Admin accounts have elevated privileges. Ensure you keep
                     your credentials secure and never share your authorization
-                    code.
+                    code
                   </p>
                 </div>
               </div>
