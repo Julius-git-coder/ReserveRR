@@ -1,4 +1,4 @@
-// FirebaseConfig.js
+// Updated FirebaseConfig.js - Fixed timestamp handling for Firestore Timestamps
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import {
