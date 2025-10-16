@@ -1,4 +1,4 @@
-// App.jsx
+// Updated App.jsx - Integrated Firebase Auth State Management
 import React, { useState, useEffect } from "react";
 import {
   Home,
@@ -41,6 +41,16 @@ import WorkReady from "../Pages/WorkReady";
 import Profile from "../Pages/Profile";
 import CampusConnect from "../Pages/CampusConnect";
 import Administrator from "./Components/Administrator.jsx";
+
+// Import auth components
+import StudentSignUp from "../Pages/StudentSignUp";
+import AdminSignUp from "../Pages/AdminSignUp";
+import Login from "../Pages/Login";
+
+// Firebase imports
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { getDoc, doc } from "firebase/firestore";
+import { auth, db } from "../Service/FirebaseConfig"; // Assuming FirebaseConfig exports auth and db
 
 // ChatModal component (duplicated from Directory for global use in Dashboard)
 const ChatModal = ({ onClose, otherUser, currentUser }) => {
@@ -245,6 +255,8 @@ const NotificationModal = ({
       alert(`New program available. Check Available Programs.`);
     } else if (notif.type === "new_milestone") {
       alert(`New milestone added to program. Check Available Programs.`);
+    } else if (notif.type === "team_message") {
+      alert(`New team message from admin. Check notifications.`);
     }
   };
 
@@ -321,6 +333,31 @@ const NotificationModal = ({
                         {new Date(notif.timestamp).toLocaleString()}
                       </p>
                     )}
+                  </div>
+                </div>
+              </div>
+            );
+          } else if (notif.type === "team_message") {
+            return (
+              <div
+                key={notif.id}
+                className="p-4 hover:bg-gray-700 cursor-pointer"
+                onClick={() => handleNotificationClick(notif)}
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-yellow-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <MessageSquare className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium truncate">
+                      Team Message
+                    </p>
+                    <p className="text-gray-300 text-sm truncate">
+                      {notif.message}
+                    </p>
+                    <p className="text-gray-500 text-xs mt-1">
+                      {new Date(notif.timestamp).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1117,14 +1154,82 @@ const ProtectedAdministrator = () => {
   return <Administrator />;
 };
 
-// Main App Component
+// Main App Component - Updated for Firebase Auth
 const App = () => {
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        // Check role from Firestore
+        const adminDoc = await getDoc(doc(db, "admins", firebaseUser.uid));
+        if (adminDoc.exists()) {
+          setRole("admin");
+        } else {
+          const studentDoc = await getDoc(
+            doc(db, "students", firebaseUser.uid)
+          );
+          if (studentDoc.exists()) {
+            setRole("student");
+          } else {
+            setRole(null); // Unauthorized
+          }
+        }
+      } else {
+        setUser(null);
+        setRole(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await signOut(auth);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!user || !role) {
+    return (
+      <Routes>
+        <Route path="/" element={<StudentSignUp />} />
+        <Route path="/admin-signup" element={<AdminSignUp />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
   return (
-    <Routes>
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/Administrator" element={<ProtectedAdministrator />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/Administrator" element={<ProtectedAdministrator />} />
+        <Route path="/logout" element={<Navigate to="/login" replace />} />
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to={role === "admin" ? "/Administrator" : "/dashboard"}
+              replace
+            />
+          }
+        />
+      </Routes>
+      {/* Logout button can be added to header if needed */}
+    </>
   );
 };
 
