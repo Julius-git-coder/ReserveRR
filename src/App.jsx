@@ -1284,9 +1284,10 @@ import AdminSignUp from "../Pages/AdminSignUp";
 import Login from "../Pages/Login";
 
 // Firebase imports
-import { onAuthStateChanged, signOut, auth } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth"; // Import functions only, not auth instance
 import { getDoc, doc } from "firebase/firestore";
-import { db } from "../Service/FirebaseConfig"; // Assuming FirebaseConfig exports auth and db
+import { auth, db } from "../Service/FirebaseConfig"; // Import auth and db instances from FirebaseConfig
+
 import { listenToStudentMessages } from "../Service/FirebaseConfig";
 
 // ChatModal component (duplicated from Directory for global use in Dashboard)
