@@ -1,3 +1,4 @@
+// Fixed App.js - Added sendPrivateMessage in ChatModal, dynamic UIDs in listener, error handling, and profile fetch
 import React, { useState, useEffect } from "react";
 import {
   Home,
@@ -49,18 +50,20 @@ import Login from "../Pages/Login";
 // Firebase imports
 import { onAuthStateChanged, signOut } from "firebase/auth"; // Import functions only, not auth instance
 import { getDoc, doc } from "firebase/firestore";
-import { auth, db } from "../Service/FirebaseConfig"; // Import auth and db instances from FirebaseConfig
-
+import { getUserProfile } from "../Service/FirebaseConfig"; // NEW: Import for profile fetch
+import { auth, db, sendPrivateMessage } from "../Service/FirebaseConfig"; // Added sendPrivateMessage
 import { listenToStudentMessages } from "../Service/FirebaseConfig";
 
 // ChatModal component (duplicated from Directory for global use in Dashboard)
-const ChatModal = ({ onClose, otherUser, currentUser }) => {
+const ChatModal = ({ onClose, otherUser, currentUser, currentUid }) => {
+  // Added currentUid prop
   const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const { conversations, addMessage } = useManageStore();
   const markNotificationAsRead = useManageStore(
     (state) => state.markNotificationAsRead
   );
+  const { profile } = useManageStore(); // NEW: For adminUid
 
   const convKey = [
     Math.min(currentUser.id, otherUser.id),
@@ -86,10 +89,30 @@ const ChatModal = ({ onClose, otherUser, currentUser }) => {
     });
   }, [currentUser.id, otherUser.id, markNotificationAsRead]);
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
+    // Made async
     e.preventDefault();
     if (newMessage.trim()) {
-      addMessage(currentUser.id, otherUser.id, currentUser.id, newMessage);
+      const timestamp = new Date().toISOString();
+      const messageId = Date.now().toString();
+      // Local store update
+      addMessage(
+        currentUser.id,
+        otherUser.id,
+        currentUser.id,
+        newMessage,
+        timestamp,
+        messageId
+      );
+      // NEW: Send to Firebase
+      try {
+        const adminUid = profile.adminUid || otherUser.firebaseUid || "2"; // Fallback to hardcoded if no real UID
+        await sendPrivateMessage(currentUid, adminUid, newMessage);
+        console.log("Message sent to Firebase successfully");
+      } catch (error) {
+        console.error("Failed to send message:", error);
+        // Optional: Alert user or remove local msg
+      }
       setNewMessage("");
     }
   };
@@ -641,7 +664,7 @@ const RecentUpdates = ({ setActiveTab }) => {
     roadmapItems,
   } = useManageStore();
 
-  const studentId = 1;
+  const studentId = "1"; // Updated to string
 
   // Recent Announcements (last 2)
   const recentAnnouncements = announcements.slice(0, 2);
@@ -827,7 +850,7 @@ const PerformanceHub = ({ setActiveTab }) => {
     programs, // For soft skills
   } = useManageStore();
 
-  const studentId = 1; // Hardcoded for demo
+  const studentId = "1"; // Updated to string
 
   // Attendance: Assume 1 point per present session, total based on total attendance records added by admin
   const studentAttendance = attendance.filter((a) => a.studentId === studentId);
@@ -953,7 +976,7 @@ const PerformanceHub = ({ setActiveTab }) => {
 const DashboardContent = ({ setActiveTab }) => {
   const { profile } = useManageStore();
   const { roadmapItems } = useManageStore();
-  const studentId = 1;
+  const studentId = "1"; // Updated to string
 
   // Find current and next week data from roadmap - Fixed to filter !passed
   let currentWeekData = null;
@@ -1005,10 +1028,12 @@ const Dashboard = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [currentUid, setCurrentUid] = useState(null);
+  const [adminUid, setAdminUid] = useState(null); // NEW: Track admin UID
   const markAsRead = useManageStore((state) => state.markAsRead);
   const markNotificationAsRead = useManageStore(
     (state) => state.markNotificationAsRead
   );
+  const updateProfile = useManageStore((state) => state.updateProfile); // NEW
   const {
     directory,
     conversations,
@@ -1024,51 +1049,94 @@ const Dashboard = () => {
     addNotification,
     addMessage,
   } = useManageStore();
-  const userId = 1;
-  const currentUser = { id: 1, name: "Julius Dagana" };
-  const adminId = 2;
+  const userId = "1"; // Updated to string
+  const currentUser = { id: "1", name: "Julius Dagana" };
+  const adminId = "2"; // Updated to string
 
-  // Get current UID
+  // Get current UID and fetch profile (NEW: Includes adminUid)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUid(user ? user.uid : null);
+      if (user) {
+        try {
+          const profile = await getUserProfile(user.uid);
+          if (profile) {
+            updateProfile({ ...profile, adminUid: profile.adminUid || null });
+            setAdminUid(profile.adminUid || "2"); // Set admin UID
+          }
+        } catch (error) {
+          console.error("Failed to fetch profile:", error);
+        }
+      }
     });
     return unsubscribe;
-  }, []);
+  }, [updateProfile]);
 
-  // Listen to messages
+  // Listen to messages - Updated for dynamic UIDs and error handling
   useEffect(() => {
-    if (!currentUid) return;
+    if (!currentUid || !adminUid) return;
 
     const unsubscribe = listenToStudentMessages(
       currentUid,
       (teamMessages) => {
-        teamMessages.forEach((msg) => {
-          if (msg.isTeamMessage) {
-            addNotification({
-              id: `team-${msg.id}`,
-              userId: userId,
-              type: "team_message",
-              messageId: msg.id,
-              message: msg.message,
-              read: false,
-              timestamp: msg.timestamp
-                ? msg.timestamp.toISOString()
-                : new Date().toISOString(),
-            });
-          }
-        });
+        try {
+          teamMessages.forEach((msg) => {
+            if (msg.isTeamMessage) {
+              const timestamp =
+                msg.timestamp?.toDate()?.toISOString() ||
+                new Date().toISOString();
+              addNotification({
+                id: `team-${msg.id}`,
+                userId: userId,
+                type: "team_message",
+                messageId: msg.id,
+                message: msg.message,
+                read: false,
+                timestamp,
+              });
+            }
+          });
+        } catch (error) {
+          console.error("Error processing team messages:", error);
+        }
       },
       (privateMessages) => {
-        privateMessages.forEach((msg) => {
-          // Messages from admin
-          addMessage(userId, adminId, adminId, msg.message);
-        });
+        try {
+          const convKey = [
+            Math.min(userId, adminId),
+            Math.max(userId, adminId),
+          ].join("-");
+          const state = useManageStore.getState();
+          const currentConv = state.conversations[convKey] || [];
+          const newMsgs = privateMessages.filter(
+            (msg) => !currentConv.some((m) => m.id === msg.id)
+          );
+          newMsgs.forEach((msg) => {
+            const timestamp =
+              msg.timestamp?.toDate()?.toISOString() ||
+              new Date().toISOString();
+            const senderId = msg.senderUid === currentUid ? userId : adminId;
+            useManageStore
+              .getState()
+              .addMessage(
+                userId,
+                adminId,
+                senderId,
+                msg.message,
+                timestamp,
+                msg.id
+              );
+          });
+        } catch (error) {
+          console.error("Error processing private messages:", error);
+        }
       }
     );
 
-    return unsubscribe;
-  }, [currentUid, userId, adminId, addNotification, addMessage]);
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [currentUid, adminUid, userId, adminId, addNotification, addMessage]);
 
   const handleBellClick = () => {
     setIsNotificationOpen(true);
@@ -1171,6 +1239,7 @@ const Dashboard = () => {
           onClose={() => setIsChatOpen(false)}
           otherUser={selectedUser}
           currentUser={currentUser}
+          currentUid={currentUid} // NEW: Pass currentUid
         />
       )}
 
@@ -1213,18 +1282,23 @@ const App = () => {
       if (firebaseUser) {
         setUser(firebaseUser);
         // Check role from Firestore
-        const adminDoc = await getDoc(doc(db, "admins", firebaseUser.uid));
-        if (adminDoc.exists()) {
-          setRole("admin");
-        } else {
-          const studentDoc = await getDoc(
-            doc(db, "students", firebaseUser.uid)
-          );
-          if (studentDoc.exists()) {
-            setRole("student");
+        try {
+          const adminDoc = await getDoc(doc(db, "admins", firebaseUser.uid));
+          if (adminDoc.exists()) {
+            setRole("admin");
           } else {
-            setRole(null); // Unauthorized
+            const studentDoc = await getDoc(
+              doc(db, "students", firebaseUser.uid)
+            );
+            if (studentDoc.exists()) {
+              setRole("student");
+            } else {
+              setRole(null); // Unauthorized
+            }
           }
+        } catch (error) {
+          console.error("Error checking role:", error);
+          setRole(null);
         }
       } else {
         setUser(null);
@@ -1237,7 +1311,11 @@ const App = () => {
   }, []);
 
   const handleLogout = async () => {
-    await signOut(auth);
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   if (loading) {

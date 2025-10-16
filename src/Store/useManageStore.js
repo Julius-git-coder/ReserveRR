@@ -1,13 +1,13 @@
-// Updated Store/useManageStore.js - Added optional timestamp param to addMessage for Firebase integration
+// Fixed useManageStore.js - Updated addMessage to handle string UIDs for convKeys
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 const useManageStore = create(
   persist(
     (set, get) => ({
-      // Initial directory data
+      // Initial directory data - Updated IDs to strings for real UID compatibility
       directory: [
         {
-          id: 1,
+          id: "1", // Changed to string for consistency
           name: "Julius Dagana",
           email: "julius@example.com",
           role: "Student",
@@ -15,7 +15,7 @@ const useManageStore = create(
           cohort: "2024-B",
         },
         {
-          id: 2,
+          id: "2", // Changed to string
           name: "Admin",
           email: "admin@gradea.com",
           role: "Administrator",
@@ -23,7 +23,7 @@ const useManageStore = create(
           cohort: "Staff",
         },
         {
-          id: 3,
+          id: "3",
           name: "Instructor Smith",
           email: "smith@example.com",
           role: "Instructor",
@@ -31,7 +31,7 @@ const useManageStore = create(
           specialty: "Web Development",
         },
         {
-          id: 4,
+          id: "4",
           name: "TA John",
           email: "john@example.com",
           role: "Teaching Assistant",
@@ -110,23 +110,23 @@ const useManageStore = create(
         };
         get().addNotification(newNotif);
       },
-      // Conversations state
+      // Conversations state - Updated to handle string IDs
       conversations: {},
       addMessage: (
         user1Id,
         user2Id,
         senderId,
         text,
-        timestamp = new Date().toISOString()
+        timestamp = new Date().toISOString(),
+        messageId = Date.now().toString()
       ) => {
-        const key = [
-          Math.min(user1Id, user2Id),
-          Math.max(user1Id, user2Id),
-        ].join("-");
-        const messageId = Date.now();
+        // Updated to handle string IDs safely
+        const id1 = user1Id.toString();
+        const id2 = user2Id.toString();
+        const key = [Math.min(id1, id2), Math.max(id1, id2)].join("-");
         const message = {
           id: messageId,
-          senderId,
+          senderId: senderId.toString(),
           text,
           timestamp,
         };
@@ -137,14 +137,14 @@ const useManageStore = create(
           },
         }));
         // Add notification to recipient
-        const recipientId = user1Id === senderId ? user2Id : user1Id;
-        if (recipientId !== senderId) {
+        const recipientId = id1 === senderId.toString() ? id2 : id1;
+        if (recipientId !== senderId.toString()) {
           const newNotif = {
             id: Date.now() + 1,
             userId: recipientId,
             type: "message",
-            fromUserId: senderId,
-            messageId,
+            fromUserId: senderId.toString(),
+            messageId: messageId,
             read: false,
             timestamp: new Date().toISOString(),
           };
@@ -547,7 +547,7 @@ const useManageStore = create(
         set((state) => ({
           projects: state.projects.filter((p) => p.id !== id),
         })),
-      // State for Profile Updates
+      // State for Profile Updates - Added adminUid field
       profile: {
         name: "Julius Dagana",
         email: "julius@example.com",
@@ -558,6 +558,7 @@ const useManageStore = create(
         bio: "Full-stack developer in training with a passion for building web applications.",
         cohort: "Cohort 2024-B",
         startDate: "August 2024",
+        adminUid: null, // NEW: For dynamic admin UID
       },
       updateProfile: (updatedProfile) =>
         set((state) => ({
@@ -621,7 +622,7 @@ const useManageStore = create(
               ...newNotifs,
               {
                 id: Date.now(),
-                userId: 1, // Assuming student ID 1
+                userId: "1", // Updated to string
                 type: "day_completed",
                 day: newCompleted,
                 message: `Day ${newCompleted} completed! Keep going!`,
@@ -679,7 +680,7 @@ const useManageStore = create(
           if (session.status === "pending") {
             const newNotif = {
               id: Date.now(),
-              userId: 2,
+              userId: "2", // Updated to string
               type: "session_booked",
               fromUserId: session.studentId,
               sessionId: session.id,
@@ -703,7 +704,7 @@ const useManageStore = create(
             id: Date.now(),
             userId: session.studentId,
             type: "session_approved",
-            fromUserId: 2,
+            fromUserId: "2", // Updated to string
             sessionId,
             message: `Your session "${session.title}" has been approved. Zoom link ready.`,
             read: false,
@@ -726,7 +727,7 @@ const useManageStore = create(
             id: Date.now(),
             userId: session.studentId,
             type: "session_rejected",
-            fromUserId: 2,
+            fromUserId: "2", // Updated to string
             sessionId,
             message: `Your session "${session.title}" has been rejected.`,
             read: false,
@@ -749,7 +750,7 @@ const useManageStore = create(
             id: Date.now(),
             userId: session.studentId,
             type: "session_started",
-            fromUserId: 2,
+            fromUserId: "2", // Updated to string
             sessionId,
             message: `Your session "${session.title}" has started! Join now.`,
             read: false,
@@ -916,13 +917,16 @@ const useManageStore = create(
             notifications: newNotifs,
           };
         }),
-      requestJoinProgram: (programId, studentId = 1) =>
+      requestJoinProgram: (
+        programId,
+        studentId = "1" // Updated default to string
+      ) =>
         set((state) => {
           const program = state.programs.find((p) => p.id === programId);
           if (!program) return state;
           const newNotif = {
             id: Date.now(),
-            userId: 2, // Admin
+            userId: "2", // Updated to string
             type: "program_join_requested",
             fromUserId: studentId,
             programId,
@@ -947,7 +951,10 @@ const useManageStore = create(
             notifications: [...state.notifications, newNotif],
           };
         }),
-      approveJoinRequest: (programId, studentId = 1) =>
+      approveJoinRequest: (
+        programId,
+        studentId = "1" // Updated default
+      ) =>
         set((state) => {
           const program = state.programs.find((p) => p.id === programId);
           if (!program) return state;
@@ -955,7 +962,7 @@ const useManageStore = create(
             id: Date.now(),
             userId: studentId,
             type: "program_join_approved",
-            fromUserId: 2, // Admin
+            fromUserId: "2", // Updated
             programId,
             message: `Your request to join "${program.name}" has been approved!`,
             read: false,
@@ -978,7 +985,10 @@ const useManageStore = create(
             notifications: [...state.notifications, newNotif],
           };
         }),
-      rejectJoinRequest: (programId, studentId = 1) =>
+      rejectJoinRequest: (
+        programId,
+        studentId = "1" // Updated default
+      ) =>
         set((state) => {
           const program = state.programs.find((p) => p.id === programId);
           if (!program) return state;
@@ -986,7 +996,7 @@ const useManageStore = create(
             id: Date.now(),
             userId: studentId,
             type: "program_join_rejected",
-            fromUserId: 2, // Admin
+            fromUserId: "2", // Updated
             programId,
             message: `Your request to join "${program.name}" has been rejected.`,
             read: false,
