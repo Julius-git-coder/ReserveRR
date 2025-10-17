@@ -1,5 +1,5 @@
-// Fixed App.js - Added sendPrivateMessage in ChatModal, dynamic UIDs in listener, error handling, and profile fetch
-import React, { useState, useEffect } from "react";
+// Complete fixed App.js
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Home,
   Users,
@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import useManageStore from "../src/Store/useManageStore"; // Import the store
-
 // Import all components from Pages folder
 import Announcement from "../Pages/Announcement";
 import Assignments from "../Pages/Assignments";
@@ -34,46 +33,28 @@ import Grading from "../Pages/Grading";
 import DaysOfLearning from "../Pages/DaysOfLearning";
 import RoadMap from "../Pages/RoadMap";
 import ClassMaterials from "../Pages/ClassMaterials";
-
 import Directory from "../Pages/Directory";
 import BookSession from "../Pages/BookSections";
 import WorkReady from "../Pages/WorkReady";
 import Profile from "../Pages/Profile";
 import CampusConnect from "../Pages/CampusConnect";
 import Administrator from "./Components/Administrator.jsx";
-
-// Import auth components
-import StudentSignUp from "../Pages/StudentSignUp";
-import AdminSignUp from "../Pages/AdminSignUp";
-import Login from "../Pages/Login";
-
-// Firebase imports
-import { onAuthStateChanged, signOut } from "firebase/auth"; // Import functions only, not auth instance
-import { getDoc, doc } from "firebase/firestore";
-import { getUserProfile } from "../Service/FirebaseConfig"; // NEW: Import for profile fetch
-import { auth, db, sendPrivateMessage } from "../Service/FirebaseConfig"; // Added sendPrivateMessage
-import { listenToStudentMessages } from "../Service/FirebaseConfig";
-
 // ChatModal component (duplicated from Directory for global use in Dashboard)
-const ChatModal = ({ onClose, otherUser, currentUser, currentUid }) => {
-  // Added currentUid prop
+const ChatModal = ({ onClose, otherUser, currentUser }) => {
   const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const { conversations, addMessage } = useManageStore();
+  const { conversations, addMessage, directory } = useManageStore();
   const markNotificationAsRead = useManageStore(
     (state) => state.markNotificationAsRead
   );
-  const { profile } = useManageStore(); // NEW: For adminUid
-
+  const { profile } = useManageStore(); // For adminUid if needed locally
   const convKey = [
     Math.min(currentUser.id, otherUser.id),
     Math.max(currentUser.id, otherUser.id),
   ].join("-");
-
   useEffect(() => {
     setMessages(conversations[convKey] || []);
   }, [conversations, convKey]);
-
   // Mark unread notifications from this user as read when chat opens
   useEffect(() => {
     const state = useManageStore.getState();
@@ -88,14 +69,12 @@ const ChatModal = ({ onClose, otherUser, currentUser, currentUid }) => {
       markNotificationAsRead(notif.id);
     });
   }, [currentUser.id, otherUser.id, markNotificationAsRead]);
-
-  const handleSendMessage = async (e) => {
-    // Made async
+  const handleSendMessage = (e) => {
     e.preventDefault();
     if (newMessage.trim()) {
       const timestamp = new Date().toISOString();
       const messageId = Date.now().toString();
-      // Local store update
+      // Local store update only
       addMessage(
         currentUser.id,
         otherUser.id,
@@ -104,27 +83,26 @@ const ChatModal = ({ onClose, otherUser, currentUser, currentUid }) => {
         timestamp,
         messageId
       );
-      // NEW: Send to Firebase
-      try {
-        const adminUid = profile.adminUid || otherUser.firebaseUid || "2"; // Fallback to hardcoded if no real UID
-        await sendPrivateMessage(currentUid, adminUid, newMessage);
-        console.log("Message sent to Firebase successfully");
-      } catch (error) {
-        console.error("Failed to send message:", error);
-        // Optional: Alert user or remove local msg
-      }
       setNewMessage("");
     }
   };
-
+  const otherUserProfile = directory.find((u) => u.id === otherUser.id);
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 w-full h-full max-w-4xl rounded-lg flex flex-col">
         {/* Header */}
         <div className="bg-gray-700 p-4 flex items-center justify-between border-b border-gray-600">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-gray-300" />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
+              {otherUserProfile?.pictureUrl ? (
+                <img
+                  src={otherUserProfile.pictureUrl}
+                  alt={otherUser.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-5 h-5 text-gray-300" />
+              )}
             </div>
             <div>
               <h3 className="text-white font-semibold">{otherUser.name}</h3>
@@ -135,7 +113,6 @@ const ChatModal = ({ onClose, otherUser, currentUser, currentUid }) => {
             <X className="w-6 h-6" />
           </button>
         </div>
-
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((msg) => (
@@ -168,7 +145,6 @@ const ChatModal = ({ onClose, otherUser, currentUser, currentUid }) => {
             </div>
           ))}
         </div>
-
         {/* Input */}
         <form
           onSubmit={handleSendMessage}
@@ -194,7 +170,6 @@ const ChatModal = ({ onClose, otherUser, currentUser, currentUid }) => {
     </div>
   );
 };
-
 // Notification Modal Component (updated for all notification types)
 const NotificationModal = ({
   isOpen,
@@ -215,12 +190,10 @@ const NotificationModal = ({
   programs,
 }) => {
   if (!isOpen) return null;
-
   const notifications = useManageStore
     .getState()
     .notifications.filter((n) => n.userId === userId && !n.read)
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
   if (notifications.length === 0) {
     return (
       <div className="fixed right-4 top-20 w-80 bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-700">
@@ -239,7 +212,6 @@ const NotificationModal = ({
       </div>
     );
   }
-
   const handleNotificationClick = (notif) => {
     markNotificationAsRead(notif.id);
     onClose();
@@ -281,9 +253,26 @@ const NotificationModal = ({
       alert(`New milestone added to program. Check Available Programs.`);
     } else if (notif.type === "team_message") {
       alert(`New team message from admin. Check notifications.`);
+    } else if (notif.type === "friend_request_received") {
+      alert(`New friend request received. Check Directory.`);
+    } else if (notif.type === "friend_request_accepted") {
+      alert(`Friend request accepted!`);
+    } else if (notif.type === "friend_request_rejected") {
+      alert(`Friend request rejected.`);
+    } else if (notif.type === "program_join_approved") {
+      alert(`Program join request approved!`);
+    } else if (notif.type === "program_join_rejected") {
+      alert(`Program join request rejected.`);
+    } else if (notif.type === "milestone_updated") {
+      alert(`Milestone status updated. Check Available Programs.`);
+    } else if (notif.type === "day_completed") {
+      alert(`Day completed! Great job!`);
+    } else if (notif.type === "session_booked") {
+      alert(`New session booked. Check Sessions Management.`);
+    } else if (notif.type === "program_join_requested") {
+      alert(`New program join request. Check Programs.`);
     }
   };
-
   return (
     <div className="fixed right-4 top-20 w-80 bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-700 max-h-96 overflow-y-auto">
       <div className="p-4 border-b border-gray-600 flex justify-between items-center">
@@ -386,6 +375,60 @@ const NotificationModal = ({
                 </div>
               </div>
             );
+          } else if (notif.type.startsWith("program_join_")) {
+            const program = programs.find((p) => p.id === notif.programId);
+            return (
+              <div
+                key={notif.id}
+                className="p-4 hover:bg-gray-700 cursor-pointer"
+                onClick={() => handleNotificationClick(notif)}
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Briefcase className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium truncate">
+                      Program Update
+                    </p>
+                    <p className="text-gray-300 text-sm truncate">
+                      {notif.message}
+                    </p>
+                    {program && (
+                      <p className="text-gray-500 text-xs mt-1">
+                        {program.name}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          } else if (notif.type.startsWith("friend_request_")) {
+            const sender = directory.find((u) => u.id === notif.fromUserId);
+            return (
+              <div
+                key={notif.id}
+                className="p-4 hover:bg-gray-700 cursor-pointer"
+                onClick={() => handleNotificationClick(notif)}
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Users className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium truncate">
+                      Friend Request
+                    </p>
+                    <p className="text-gray-300 text-sm truncate">
+                      {notif.message}
+                    </p>
+                    <p className="text-gray-500 text-xs mt-1">
+                      {new Date(notif.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
           } else {
             // Handle other admin notifications
             return (
@@ -418,7 +461,6 @@ const NotificationModal = ({
     </div>
   );
 };
-
 // Sidebar Component
 const Sidebar = ({
   activeTab,
@@ -438,13 +480,11 @@ const Sidebar = ({
     { id: "100days", icon: Code, label: "100 Days To BECE" },
     { id: "roadmap", icon: Map, label: "Roadmap" },
     { id: "materials", icon: BookOpen, label: "Class Materials" },
-
     { id: "directory", icon: BookMarked, label: "Directory" },
     { id: "session", icon: Calendar, label: "Book a Session" },
     { id: "workready", icon: Briefcase, label: "Available Programs" },
     { id: "profile", icon: User, label: "Profile" },
   ];
-
   return (
     <div
       className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gray-900 transform ${
@@ -470,7 +510,6 @@ const Sidebar = ({
             <X className="w-6 h-6" />
           </button>
         </div>
-
         <nav className="flex-1 overflow-y-auto py-4">
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -497,7 +536,6 @@ const Sidebar = ({
     </div>
   );
 };
-
 // Progress Card Component
 const ProgressCard = ({
   title,
@@ -508,7 +546,6 @@ const ProgressCard = ({
   onClick,
 }) => {
   const percentage = total > 0 ? (current / total) * 100 : 0;
-
   return (
     <div
       className={`bg-gray-800 rounded-lg p-6 border border-gray-700 cursor-pointer hover:bg-gray-700 transition-colors ${
@@ -537,11 +574,9 @@ const ProgressCard = ({
     </div>
   );
 };
-
 // Overall Progress Component - Now dynamic
 const OverallProgress = ({ current, total }) => {
   const percentage = total > 0 ? (current / total) * 100 : 0;
-
   return (
     <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
       <div className="flex items-center space-x-3 mb-4">
@@ -562,30 +597,35 @@ const OverallProgress = ({ current, total }) => {
     </div>
   );
 };
-
-// Welcome Section Component - Now partially dynamic from roadmap
+// Welcome Section Component - Now uses directory for student profile
 const WelcomeSection = ({
-  name,
+  studentProfile,
   currentWeekData,
   nextWeekData,
   setActiveTab,
 }) => {
   const handleRoadmapClick = () => setActiveTab("roadmap");
-
   return (
     <div className="mb-8">
       <div className="flex items-center space-x-4 mb-6">
-        <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center">
-          <User className="w-8 h-8 text-gray-400" />
+        <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+          {studentProfile?.pictureUrl ? (
+            <img
+              src={studentProfile.pictureUrl}
+              alt="Profile"
+              className="w-full h-full object-cover rounded-full"
+            />
+          ) : (
+            <User className="w-8 h-8 text-gray-400" />
+          )}
         </div>
         <div>
-          <h1 className="text-white text-3xl font-bold">
-            Welcome back, {name}!
+          <h1 className="text-white text-3xl font-semibold">
+            Welcome back, {studentProfile?.name || "Student"}!
           </h1>
           <p className="text-gray-400">Here's your overview for today.</p>
         </div>
       </div>
-
       {currentWeekData && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div
@@ -616,7 +656,6 @@ const WelcomeSection = ({
               ))}
             </ul>
           </div>
-
           {nextWeekData && (
             <div
               className="bg-gray-800 rounded-lg p-6 border border-gray-700 cursor-pointer hover:bg-gray-700 transition-colors"
@@ -650,7 +689,6 @@ const WelcomeSection = ({
     </div>
   );
 };
-
 // Recent Updates Component - Dynamic summary from all pages
 const RecentUpdates = ({ setActiveTab }) => {
   const {
@@ -663,12 +701,9 @@ const RecentUpdates = ({ setActiveTab }) => {
     daysOfLearning,
     roadmapItems,
   } = useManageStore();
-
-  const studentId = "1"; // Updated to string
-
+  const studentId = 1; // Fixed to number
   // Recent Announcements (last 2)
   const recentAnnouncements = announcements.slice(0, 2);
-
   // Pending/Submitted Assignments, Exercises, Projects (last 3 combined)
   const pendingAssignments = assignments
     .filter((a) => a.studentId === studentId && a.status !== "graded")
@@ -687,7 +722,6 @@ const RecentUpdates = ({ setActiveTab }) => {
     ...pendingExercises,
     ...pendingProjects,
   ].slice(0, 3);
-
   // Upcoming Sessions (next 2)
   const now = new Date();
   const upcomingSessions = sessions
@@ -698,13 +732,10 @@ const RecentUpdates = ({ setActiveTab }) => {
         new Date(`${s.date}T${s.time}:00`) > now
     )
     .slice(0, 2);
-
   // Recent Class Materials (last 1)
   const recentMaterials = classMaterials.slice(-1);
-
   // 100 Days Progress
   const daysProgress = `${daysOfLearning.completedDays} / ${daysOfLearning.totalDays} days`;
-
   // Current Roadmap Week - Fixed to filter !passed
   const currentRoadmapWeek =
     roadmapItems
@@ -712,7 +743,6 @@ const RecentUpdates = ({ setActiveTab }) => {
         (item) => item.weeks?.filter((w) => w.current && !w.passed) || []
       )
       .slice(0, 1)[0]?.topic || "No current week";
-
   const handleTaskClick = (task) => {
     const tabMap = {
       assignment: "assignments",
@@ -721,13 +751,11 @@ const RecentUpdates = ({ setActiveTab }) => {
     };
     setActiveTab(tabMap[task.type] || "assignments");
   };
-
   const handleAnnouncementClick = () => setActiveTab("announcements");
   const handleSessionClick = () => setActiveTab("session");
   const handleDaysClick = () => setActiveTab("100days");
   const handleRoadmapClick = () => setActiveTab("roadmap");
   const handleMaterialsClick = () => setActiveTab("materials");
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
       {/* Recent Announcements */}
@@ -754,7 +782,6 @@ const RecentUpdates = ({ setActiveTab }) => {
           <p className="text-gray-400">No recent announcements.</p>
         )}
       </div>
-
       {/* Recent Tasks */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 className="text-white font-semibold text-lg mb-4 flex items-center space-x-2">
@@ -780,7 +807,6 @@ const RecentUpdates = ({ setActiveTab }) => {
           <p className="text-gray-400">No pending tasks.</p>
         )}
       </div>
-
       {/* Upcoming Sessions */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 className="text-white font-semibold text-lg mb-4 flex items-center space-x-2">
@@ -806,7 +832,6 @@ const RecentUpdates = ({ setActiveTab }) => {
           <p className="text-gray-400">No upcoming sessions.</p>
         )}
       </div>
-
       {/* 100 Days & Roadmap */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 className="text-white font-semibold text-lg mb-4 flex items-center space-x-2">
@@ -839,7 +864,6 @@ const RecentUpdates = ({ setActiveTab }) => {
     </div>
   );
 };
-
 // Performance Hub Component - Now fully dynamic from store
 const PerformanceHub = ({ setActiveTab }) => {
   const {
@@ -849,9 +873,7 @@ const PerformanceHub = ({ setActiveTab }) => {
     projects,
     programs, // For soft skills
   } = useManageStore();
-
-  const studentId = "1"; // Updated to string
-
+  const studentId = 1; // Fixed to number
   // Attendance: Assume 1 point per present session, total based on total attendance records added by admin
   const studentAttendance = attendance.filter((a) => a.studentId === studentId);
   const presentAttendance = studentAttendance.filter(
@@ -859,7 +881,6 @@ const PerformanceHub = ({ setActiveTab }) => {
   );
   const attendanceCurrent = presentAttendance.length;
   const attendanceTotal = studentAttendance.length;
-
   // Assignments: Sum grades for graded, total points for all
   const studentAssignments = assignments.filter(
     (a) => a.studentId === studentId
@@ -875,7 +896,6 @@ const PerformanceHub = ({ setActiveTab }) => {
     (sum, a) => sum + a.points,
     0
   );
-
   // Exercises: Similar to assignments
   const studentExercises = exercises.filter((e) => e.studentId === studentId);
   const gradedExercises = studentExercises.filter((e) => e.status === "graded");
@@ -884,7 +904,6 @@ const PerformanceHub = ({ setActiveTab }) => {
     0
   );
   const exercisesTotal = studentExercises.reduce((sum, e) => sum + e.points, 0);
-
   // Projects: Sum grades for graded, total points from all projects set by admin
   const studentProjects = projects.filter((p) => p.studentId === studentId);
   const gradedProjects = studentProjects.filter((p) => p.status === "graded");
@@ -893,7 +912,6 @@ const PerformanceHub = ({ setActiveTab }) => {
     0
   );
   const projectsTotal = studentProjects.reduce((sum, p) => sum + p.points, 0);
-
   // Soft Skills & Product Training: From programs milestones completed
   const enrolledPrograms = programs.filter((p) =>
     p.enrolledStudents?.includes(studentId)
@@ -903,7 +921,6 @@ const PerformanceHub = ({ setActiveTab }) => {
   }, 0);
   const softSkillsTotal =
     enrolledPrograms.reduce((sum, p) => sum + (p.totalMilestones || 0), 0) || 6;
-
   // Overall
   const overallCurrent =
     attendanceCurrent +
@@ -917,7 +934,6 @@ const PerformanceHub = ({ setActiveTab }) => {
     exercisesTotal +
     projectsTotal +
     softSkillsTotal;
-
   return (
     <div className="mb-8">
       <div className="flex items-center space-x-2 mb-6">
@@ -927,9 +943,7 @@ const PerformanceHub = ({ setActiveTab }) => {
       <p className="text-gray-400 mb-6">
         Your academic points breakdown and progress.
       </p>
-
       <OverallProgress current={overallCurrent} total={overallTotal} />
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ProgressCard
           title="Class Attendance"
@@ -971,13 +985,15 @@ const PerformanceHub = ({ setActiveTab }) => {
     </div>
   );
 };
-
-// Dashboard Content Component - Now passes dynamic data to WelcomeSection
+// Dashboard Content Component - Now uses directory for student profile
 const DashboardContent = ({ setActiveTab }) => {
-  const { profile } = useManageStore();
+  const { directory } = useManageStore();
   const { roadmapItems } = useManageStore();
-  const studentId = "1"; // Updated to string
-
+  const studentId = 1; // Fixed to number
+  const studentProfile = useMemo(
+    () => directory.find((u) => u.id === studentId),
+    [directory]
+  );
   // Find current and next week data from roadmap - Fixed to filter !passed
   let currentWeekData = null;
   let nextWeekData = null;
@@ -1005,11 +1021,10 @@ const DashboardContent = ({ setActiveTab }) => {
       }
     }
   });
-
   return (
     <div>
       <WelcomeSection
-        name={profile.name || "Julius Dagana"}
+        studentProfile={studentProfile}
         currentWeekData={currentWeekData}
         nextWeekData={nextWeekData}
         setActiveTab={setActiveTab}
@@ -1019,21 +1034,17 @@ const DashboardContent = ({ setActiveTab }) => {
     </div>
   );
 };
-
-// Protected Dashboard Component - Added Firebase message listening
+// Protected Dashboard Component - Removed Firebase message listening, local only; use directory for profile pic
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [currentUid, setCurrentUid] = useState(null);
-  const [adminUid, setAdminUid] = useState(null); // NEW: Track admin UID
   const markAsRead = useManageStore((state) => state.markAsRead);
   const markNotificationAsRead = useManageStore(
     (state) => state.markNotificationAsRead
   );
-  const updateProfile = useManageStore((state) => state.updateProfile); // NEW
   const {
     directory,
     conversations,
@@ -1049,104 +1060,22 @@ const Dashboard = () => {
     addNotification,
     addMessage,
   } = useManageStore();
-  const userId = "1"; // Updated to string
-  const currentUser = { id: "1", name: "Julius Dagana" };
-  const adminId = "2"; // Updated to string
-
-  // Get current UID and fetch profile (NEW: Includes adminUid)
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUid(user ? user.uid : null);
-      if (user) {
-        try {
-          const profile = await getUserProfile(user.uid);
-          if (profile) {
-            updateProfile({ ...profile, adminUid: profile.adminUid || null });
-            setAdminUid(profile.adminUid || "2"); // Set admin UID
-          }
-        } catch (error) {
-          console.error("Failed to fetch profile:", error);
-        }
-      }
-    });
-    return unsubscribe;
-  }, [updateProfile]);
-
-  // Listen to messages - Updated for dynamic UIDs and error handling
-  useEffect(() => {
-    if (!currentUid || !adminUid) return;
-
-    const unsubscribe = listenToStudentMessages(
-      currentUid,
-      (teamMessages) => {
-        try {
-          teamMessages.forEach((msg) => {
-            if (msg.isTeamMessage) {
-              const timestamp =
-                msg.timestamp?.toDate()?.toISOString() ||
-                new Date().toISOString();
-              addNotification({
-                id: `team-${msg.id}`,
-                userId: userId,
-                type: "team_message",
-                messageId: msg.id,
-                message: msg.message,
-                read: false,
-                timestamp,
-              });
-            }
-          });
-        } catch (error) {
-          console.error("Error processing team messages:", error);
-        }
-      },
-      (privateMessages) => {
-        try {
-          const convKey = [
-            Math.min(userId, adminId),
-            Math.max(userId, adminId),
-          ].join("-");
-          const state = useManageStore.getState();
-          const currentConv = state.conversations[convKey] || [];
-          const newMsgs = privateMessages.filter(
-            (msg) => !currentConv.some((m) => m.id === msg.id)
-          );
-          newMsgs.forEach((msg) => {
-            const timestamp =
-              msg.timestamp?.toDate()?.toISOString() ||
-              new Date().toISOString();
-            const senderId = msg.senderUid === currentUid ? userId : adminId;
-            useManageStore
-              .getState()
-              .addMessage(
-                userId,
-                adminId,
-                senderId,
-                msg.message,
-                timestamp,
-                msg.id
-              );
-          });
-        } catch (error) {
-          console.error("Error processing private messages:", error);
-        }
-      }
-    );
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [currentUid, adminUid, userId, adminId, addNotification, addMessage]);
-
+  const studentId = 1; // Fixed to number
+  const currentUser = { id: 1, name: "Julius Dagana" };
+  const adminId = 2; // Fixed to number
+  const studentProfile = useMemo(
+    () => directory.find((u) => u.id === studentId),
+    [directory]
+  );
+  // Removed Firebase UID and profile fetch
+  // Removed message listening useEffect
   const handleBellClick = () => {
     setIsNotificationOpen(true);
   };
-
   const handleOpenChatFromNotification = (sender) => {
     setSelectedUser(sender);
     setIsChatOpen(true);
   };
-
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
@@ -1183,7 +1112,6 @@ const Dashboard = () => {
         return <DashboardContent setActiveTab={setActiveTab} />;
     }
   };
-
   return (
     <div className="flex h-screen bg-gray-900">
       {isMobileMenuOpen && (
@@ -1192,14 +1120,12 @@ const Dashboard = () => {
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
-
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
-
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
           <div className="flex items-center justify-between">
@@ -1220,33 +1146,39 @@ const Dashboard = () => {
                     useManageStore
                       .getState()
                       .notifications.filter(
-                        (n) => n.userId === userId && !n.read
+                        (n) => n.userId === studentId && !n.read
                       ).length
                   }
                 </span>
               </button>
-              <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-                <User className="w-6 h-6 text-gray-400" />
+              {/* Student profile picture shows here (Dashboard is student view) */}
+              <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                {studentProfile?.pictureUrl ? (
+                  <img
+                    src={studentProfile.pictureUrl}
+                    alt="Profile"
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                ) : (
+                  <User className="w-6 h-6 text-gray-400" />
+                )}
               </div>
             </div>
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">{renderContent()}</main>
       </div>
-
       {isChatOpen && selectedUser && (
         <ChatModal
           onClose={() => setIsChatOpen(false)}
           otherUser={selectedUser}
           currentUser={currentUser}
-          currentUid={currentUid} // NEW: Pass currentUid
         />
       )}
-
       <NotificationModal
         isOpen={isNotificationOpen}
         onClose={() => setIsNotificationOpen(false)}
-        userId={userId}
+        userId={studentId}
         directory={directory}
         conversations={conversations}
         markNotificationAsRead={markNotificationAsRead}
@@ -1264,98 +1196,20 @@ const Dashboard = () => {
     </div>
   );
 };
-
 // Protected Administrator Component
 const ProtectedAdministrator = () => {
   return <Administrator />;
 };
-
-// Main App Component - Updated for Firebase Auth
+// Main App Component - Removed Firebase Auth, always show Dashboard
 const App = () => {
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        // Check role from Firestore
-        try {
-          const adminDoc = await getDoc(doc(db, "admins", firebaseUser.uid));
-          if (adminDoc.exists()) {
-            setRole("admin");
-          } else {
-            const studentDoc = await getDoc(
-              doc(db, "students", firebaseUser.uid)
-            );
-            if (studentDoc.exists()) {
-              setRole("student");
-            } else {
-              setRole(null); // Unauthorized
-            }
-          }
-        } catch (error) {
-          console.error("Error checking role:", error);
-          setRole(null);
-        }
-      } else {
-        setUser(null);
-        setRole(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        Loading...
-      </div>
-    );
-  }
-
-  if (!user || !role) {
-    return (
-      <Routes>
-        <Route path="/" element={<StudentSignUp />} />
-        <Route path="/admin-signup" element={<AdminSignUp />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    );
-  }
-
+  // Removed user, role, loading state
+  // Always render Dashboard as student view
   return (
-    <>
-      <Routes>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/Administrator" element={<ProtectedAdministrator />} />
-        <Route path="/logout" element={<Navigate to="/login" replace />} />
-        <Route
-          path="*"
-          element={
-            <Navigate
-              to={role === "admin" ? "/Administrator" : "/dashboard"}
-              replace
-            />
-          }
-        />
-      </Routes>
-      {/* Logout button can be added to header if needed */}
-    </>
+    <Routes>
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/Administrator" element={<ProtectedAdministrator />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
 };
-
 export default App;

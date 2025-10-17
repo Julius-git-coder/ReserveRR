@@ -1,4 +1,4 @@
-// Directory.jsx
+// Complete fixed Directory.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Search,
@@ -13,7 +13,6 @@ import {
   X,
 } from "lucide-react";
 import useManageStore from "../src/Store/useManageStore";
-
 // Simple Chat Modal Component - Full screen
 const ChatModal = ({ onClose, otherUser, currentUser }) => {
   const [newMessage, setNewMessage] = useState("");
@@ -22,16 +21,13 @@ const ChatModal = ({ onClose, otherUser, currentUser }) => {
   const markNotificationAsRead = useManageStore(
     (state) => state.markNotificationAsRead
   );
-
   const convKey = [
     Math.min(currentUser.id, otherUser.id),
     Math.max(currentUser.id, otherUser.id),
   ].join("-");
-
   useEffect(() => {
     setMessages(conversations[convKey] || []);
   }, [conversations, convKey]);
-
   // Mark unread notifications from this user as read when chat opens
   useEffect(() => {
     const state = useManageStore.getState();
@@ -46,7 +42,6 @@ const ChatModal = ({ onClose, otherUser, currentUser }) => {
       markNotificationAsRead(notif.id);
     });
   }, [currentUser.id, otherUser.id, markNotificationAsRead]);
-
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (newMessage.trim()) {
@@ -54,7 +49,6 @@ const ChatModal = ({ onClose, otherUser, currentUser }) => {
       setNewMessage("");
     }
   };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 w-full h-full max-w-4xl rounded-lg flex flex-col">
@@ -73,7 +67,6 @@ const ChatModal = ({ onClose, otherUser, currentUser }) => {
             <X className="w-6 h-6" />
           </button>
         </div>
-
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((msg) => (
@@ -106,7 +99,6 @@ const ChatModal = ({ onClose, otherUser, currentUser }) => {
             </div>
           ))}
         </div>
-
         {/* Input */}
         <form
           onSubmit={handleSendMessage}
@@ -132,7 +124,6 @@ const ChatModal = ({ onClose, otherUser, currentUser }) => {
     </div>
   );
 };
-
 const Directory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -141,10 +132,9 @@ const Directory = () => {
     directory: storeDirectory,
     friendRequests,
     sendFriendRequest,
+    addNotification,
   } = useManageStore();
-
   const currentUser = { id: 1, name: "Julius Dagana" };
-
   // FIXED FALLBACK: Trigger if empty array or null/undefined
   const fallbackDirectory = [
     {
@@ -184,7 +174,6 @@ const Directory = () => {
     storeDirectory && storeDirectory.length > 0
       ? storeDirectory
       : fallbackDirectory;
-
   // Memoized derived state
   const friends = useMemo(
     () =>
@@ -197,7 +186,6 @@ const Directory = () => {
         .map((r) => (r.fromId === currentUser.id ? r.toId : r.fromId)),
     [friendRequests, currentUser.id]
   );
-
   const pendingOutgoing = useMemo(
     () =>
       friendRequests
@@ -205,17 +193,14 @@ const Directory = () => {
         .map((r) => r.toId),
     [friendRequests, currentUser.id]
   );
-
   const isFriend = useMemo(
     () => (personId) => friends.includes(personId),
     [friends]
   );
-
   const hasPendingOutgoing = useMemo(
     () => (personId) => pendingOutgoing.includes(personId),
     [pendingOutgoing]
   );
-
   // Synchronous filter (instant results)
   const filteredPeople = useMemo(
     () =>
@@ -229,7 +214,6 @@ const Directory = () => {
       ),
     [directory, currentUser.id, searchTerm]
   );
-
   // Debug log on every render
   console.log(
     "Rendering Directory - Store length:",
@@ -243,7 +227,6 @@ const Directory = () => {
     "Filtered length:",
     filteredPeople.length
   );
-
   // Debug on mount
   useEffect(() => {
     console.log("Directory mounted - Store directory:", storeDirectory);
@@ -253,20 +236,29 @@ const Directory = () => {
       );
     }
   }, [storeDirectory]);
-
   // Reset store function (for testing)
   const resetStore = () => {
     localStorage.removeItem("manage-store");
     window.location.reload();
   };
-
   const handleSendRequest = (personId) => {
     if (!isFriend(personId) && !hasPendingOutgoing(personId)) {
       sendFriendRequest(currentUser.id, personId);
+      // FIXED: Add self-notification for sender
+      const toUser = directory.find((u) => u.id === personId);
+      const newNotifForSender = {
+        id: Date.now() + 1,
+        userId: currentUser.id,
+        type: "friend_request_sent",
+        toUserId: personId,
+        message: `Friend request sent to ${toUser?.name}`,
+        read: false,
+        timestamp: new Date().toISOString(),
+      };
+      addNotification(newNotifForSender);
       alert("Friend request sent!");
     }
   };
-
   const handleMessage = (person) => {
     if (isFriend(person.id)) {
       setSelectedUser(person);
@@ -277,13 +269,11 @@ const Directory = () => {
       );
     }
   };
-
   const getButtonText = (personId) => {
     if (isFriend(personId)) return "Message";
     if (hasPendingOutgoing(personId)) return "Pending";
     return "Send Friend Request";
   };
-
   const getButtonProps = (personId) => {
     const person = directory.find((p) => p.id === personId);
     if (!person) {
@@ -294,7 +284,6 @@ const Directory = () => {
         icon: Clock,
       };
     }
-
     if (isFriend(personId)) {
       return {
         onClick: () => handleMessage(person),
@@ -315,7 +304,6 @@ const Directory = () => {
       };
     }
   };
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -334,7 +322,6 @@ const Directory = () => {
           <span>Reset Store</span>
         </button>
       </div>
-
       <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
         <div className="flex items-center space-x-2">
           <Search className="w-5 h-5 text-gray-400" />
@@ -347,7 +334,6 @@ const Directory = () => {
           />
         </div>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredPeople.map((person) => {
           const buttonProps = getButtonProps(person.id);
@@ -405,7 +391,6 @@ const Directory = () => {
           );
         })}
       </div>
-
       {filteredPeople.length === 0 && searchTerm.trim() && (
         <div className="text-center py-12">
           <p className="text-gray-400">
@@ -423,7 +408,6 @@ const Directory = () => {
           </p>
         </div>
       )}
-
       {isChatOpen && selectedUser && (
         <ChatModal
           onClose={() => setIsChatOpen(false)}
@@ -434,5 +418,4 @@ const Directory = () => {
     </div>
   );
 };
-
 export default Directory;

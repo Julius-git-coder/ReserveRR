@@ -1,3 +1,4 @@
+// Complete fixed WorkReady.jsx
 import React from "react";
 import {
   Briefcase,
@@ -10,7 +11,7 @@ import {
 import useManageStore from "../src/Store/useManageStore";
 
 const WorkReady = () => {
-  const { workReadyResources, programs } = useManageStore();
+  const { workReadyResources, programs, addNotification } = useManageStore();
   const studentId = 1; // Hardcoded for demo
 
   const availablePrograms = programs.filter(
@@ -37,9 +38,20 @@ const WorkReady = () => {
 
   const resources = workReadyResources;
 
-
   const handleJoinProgram = (programId) => {
     requestJoinProgram(programId, studentId);
+    // FIXED: Add self-notification for student
+    const program = programs.find((p) => p.id === programId);
+    const newNotifForStudent = {
+      id: Date.now() + 1,
+      userId: studentId,
+      type: "program_join_requested_self",
+      programId,
+      message: `Join request sent for "${program?.name}"`,
+      read: false,
+      timestamp: new Date().toISOString(),
+    };
+    addNotification(newNotifForStudent);
     alert("Join request sent! Waiting for admin approval.");
   };
 

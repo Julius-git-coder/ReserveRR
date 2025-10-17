@@ -1,8 +1,7 @@
-
+// Complete fixed BookSession.jsx
 import React, { useState } from "react";
 import { Calendar, Clock, Video, User, CheckCircle, X } from "lucide-react";
 import useManageStore from "../src/Store/useManageStore";
-
 const BookSession = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
@@ -10,8 +9,7 @@ const BookSession = () => {
   const [instructorPreference, setInstructorPreference] =
     useState("Any Available");
   const [notes, setNotes] = useState("");
-  const { sessions, addSession } = useManageStore();
-
+  const { sessions, addSession, addNotification } = useManageStore();
   // Filter upcoming approved/started sessions for the student (ID: 1)
   const studentId = 1;
   const now = new Date();
@@ -25,7 +23,6 @@ const BookSession = () => {
       (s.status === "approved" || s.status === "started") &&
       isFutureSession(s)
   );
-
   // Formatting functions
   const formatDate = (dateStr) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -34,7 +31,6 @@ const BookSession = () => {
       day: "numeric",
     });
   };
-
   const formatTime = (timeStr) => {
     const [hours, minutes] = timeStr.split(":");
     const date = new Date();
@@ -45,7 +41,6 @@ const BookSession = () => {
       hour12: true,
     });
   };
-
   // Get current date and time for minimum constraints
   const today = new Date().toISOString().split("T")[0];
   const currentTime = new Date().toLocaleTimeString("en-US", {
@@ -53,14 +48,12 @@ const BookSession = () => {
     hour: "2-digit",
     minute: "2-digit",
   });
-
   const handleBookSession = (e) => {
     e.preventDefault();
     if (!selectedDate || !selectedTime || !sessionType) {
       alert("Please select date, time, and session type.");
       return;
     }
-
     // Validate that the selected time is not in the past for today's date
     const now = new Date();
     const selectedDateTime = new Date(`${selectedDate}T${selectedTime}:00`);
@@ -68,7 +61,6 @@ const BookSession = () => {
       alert("Cannot book a session in the past. Please select a future time.");
       return;
     }
-
     const sessionData = {
       id: Date.now(),
       title: sessionType,
@@ -82,6 +74,17 @@ const BookSession = () => {
       zoomLink: null, // Generated later by admin
     };
     addSession(sessionData);
+    // FIXED: Add self-notification for student
+    const newNotifForStudent = {
+      id: Date.now() + 1,
+      userId: studentId,
+      type: "session_booked_self",
+      sessionId: sessionData.id,
+      message: `Session "${sessionType}" booked for ${selectedDate} at ${selectedTime}`,
+      read: false,
+      timestamp: new Date().toISOString(),
+    };
+    addNotification(newNotifForStudent);
     alert("Session booked! Waiting for admin approval.");
     // Reset form
     setSelectedDate("");
@@ -90,7 +93,6 @@ const BookSession = () => {
     setInstructorPreference("Any Available");
     setNotes("");
   };
-
   const handleJoinSession = (session) => {
     if (session.zoomLink) {
       window.open(session.zoomLink, "_blank");
@@ -100,7 +102,6 @@ const BookSession = () => {
       );
     }
   };
-
   return (
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
@@ -111,7 +112,6 @@ const BookSession = () => {
           </p>
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <h3 className="text-white text-lg font-semibold mb-4">
@@ -188,12 +188,10 @@ const BookSession = () => {
             )}
           </div>
         </div>
-
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <h3 className="text-white text-lg font-semibold mb-4">
             Book New Session
           </h3>
-
           <form onSubmit={handleBookSession} className="space-y-4">
             <div>
               <label className="block text-gray-400 text-sm mb-2">
@@ -211,7 +209,6 @@ const BookSession = () => {
                 <option>Technical Help</option>
               </select>
             </div>
-
             <div>
               <label className="block text-gray-400 text-sm mb-2">
                 Select Date *
@@ -225,7 +222,6 @@ const BookSession = () => {
                 required
               />
             </div>
-
             <div>
               <label className="block text-gray-400 text-sm mb-2">
                 Select Time *
@@ -239,7 +235,6 @@ const BookSession = () => {
                 required
               />
             </div>
-
             <div>
               <label className="block text-gray-400 text-sm mb-2">
                 Instructor Preference
@@ -254,7 +249,6 @@ const BookSession = () => {
                 <option>Any Available</option>
               </select>
             </div>
-
             <div>
               <label className="block text-gray-400 text-sm mb-2">
                 Notes (Optional)
@@ -267,7 +261,6 @@ const BookSession = () => {
                 placeholder="What would you like to discuss?"
               />
             </div>
-
             <button
               type="submit"
               className="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-6 py-3 rounded-lg font-semibold transition-colors"
@@ -280,5 +273,4 @@ const BookSession = () => {
     </div>
   );
 };
-
 export default BookSession;
