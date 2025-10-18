@@ -305,8 +305,16 @@ const NotificationModal = ({
                 onClick={() => handleNotificationClick(notif)}
               >
                 <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-gray-300" />
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {sender?.pictureUrl ? (
+                      <img
+                        src={sender.pictureUrl}
+                        alt={sender?.name || "Sender"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-4 h-4 text-gray-300" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-medium truncate">
@@ -323,6 +331,7 @@ const NotificationModal = ({
           } else if (notif.type.startsWith("session_")) {
             // Handle session notifications
             const session = sessions.find((s) => s.id === notif.sessionId);
+            const admin = directory.find((u) => u.id === 2);
             return (
               <div
                 key={notif.id}
@@ -330,8 +339,16 @@ const NotificationModal = ({
                 onClick={() => handleNotificationClick(notif)}
               >
                 <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {admin?.pictureUrl ? (
+                      <img
+                        src={admin.pictureUrl}
+                        alt="Admin"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-4 h-4 text-gray-300" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-medium truncate">
@@ -351,6 +368,7 @@ const NotificationModal = ({
               </div>
             );
           } else if (notif.type === "team_message") {
+            const admin = directory.find((u) => u.id === 2);
             return (
               <div
                 key={notif.id}
@@ -358,8 +376,16 @@ const NotificationModal = ({
                 onClick={() => handleNotificationClick(notif)}
               >
                 <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-yellow-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <MessageSquare className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {admin?.pictureUrl ? (
+                      <img
+                        src={admin.pictureUrl}
+                        alt="Admin"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-4 h-4 text-gray-300" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-medium truncate">
@@ -377,6 +403,7 @@ const NotificationModal = ({
             );
           } else if (notif.type.startsWith("program_join_")) {
             const program = programs.find((p) => p.id === notif.programId);
+            const admin = directory.find((u) => u.id === 2);
             return (
               <div
                 key={notif.id}
@@ -384,8 +411,16 @@ const NotificationModal = ({
                 onClick={() => handleNotificationClick(notif)}
               >
                 <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Briefcase className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {admin?.pictureUrl ? (
+                      <img
+                        src={admin.pictureUrl}
+                        alt="Admin"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-4 h-4 text-gray-300" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-medium truncate">
@@ -412,8 +447,16 @@ const NotificationModal = ({
                 onClick={() => handleNotificationClick(notif)}
               >
                 <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Users className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {sender?.pictureUrl ? (
+                      <img
+                        src={sender.pictureUrl}
+                        alt={sender?.name || "Sender"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-4 h-4 text-gray-300" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-medium truncate">
@@ -431,6 +474,7 @@ const NotificationModal = ({
             );
           } else {
             // Handle other admin notifications
+            const admin = directory.find((u) => u.id === 2);
             return (
               <div
                 key={notif.id}
@@ -438,8 +482,16 @@ const NotificationModal = ({
                 onClick={() => handleNotificationClick(notif)}
               >
                 <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-yellow-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Bell className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {admin?.pictureUrl ? (
+                      <img
+                        src={admin.pictureUrl}
+                        alt="Admin"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-4 h-4 text-gray-300" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-medium truncate">
@@ -620,7 +672,7 @@ const WelcomeSection = ({
           )}
         </div>
         <div>
-          <h1 className="text-white text-3xl font-semibold">
+          <h1 className="text-white text-3xl font-bold">
             Welcome back, {studentProfile?.name || "Student"}!
           </h1>
           <p className="text-gray-400">Here's your overview for today.</p>
