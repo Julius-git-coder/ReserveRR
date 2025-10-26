@@ -12,11 +12,17 @@ import {
   Clock,
   Map,
   Briefcase,
+  Dumbbell,
+  FolderOpen,
+  Edit,
+  Trash2,
+  UserCheck,
+  Download,
+  CheckCircle,
+  Settings,
 } from "lucide-react";
 import useManageStore from "../Store/useManageStore";
-import Admini from "./Admini";
-import Administra from "./Administra";
-import Adminis from "./Adminis";
+
 // Updated Sessions Management Section Component
 const SessionsManagement = ({
   directory,
@@ -855,6 +861,7 @@ const NotificationModal = ({
     </div>
   );
 };
+
 const Administrator = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
@@ -1064,6 +1071,80 @@ const Administrator = () => {
         })),
     ],
     [assignments, exercises, projects, recentStudents]
+  );
+  // Filtered data for tabs
+  const filteredAssignments = useMemo(
+    () =>
+      assignments.filter(
+        (a) =>
+          a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          recentStudents
+            .find((s) => s.id === a.studentId)
+            ?.name.toLowerCase()
+            .includes(searchTerm.toLowerCase())
+      ),
+    [assignments, searchTerm, recentStudents]
+  );
+  const filteredExercises = useMemo(
+    () =>
+      exercises.filter(
+        (e) =>
+          e.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          recentStudents
+            .find((s) => s.id === e.studentId)
+            ?.name.toLowerCase()
+            .includes(searchTerm.toLowerCase())
+      ),
+    [exercises, searchTerm, recentStudents]
+  );
+  const filteredProjects = useMemo(
+    () =>
+      projects.filter(
+        (p) =>
+          p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          recentStudents
+            .find((s) => s.id === p.studentId)
+            ?.name.toLowerCase()
+            .includes(searchTerm.toLowerCase())
+      ),
+    [projects, searchTerm, recentStudents]
+  );
+  const filteredAttendance = useMemo(
+    () =>
+      attendance.filter(
+        (a) =>
+          a.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          recentStudents
+            .find((s) => s.id === a.studentId)
+            ?.name.toLowerCase()
+            .includes(searchTerm.toLowerCase())
+      ),
+    [attendance, searchTerm, recentStudents]
+  );
+  const filteredRoadmapItems = useMemo(
+    () =>
+      roadmapItems.filter(
+        (r) =>
+          r.phase.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          r.term.toLowerCase().includes(searchTerm.toLowerCase())
+      ),
+    [roadmapItems, searchTerm]
+  );
+  const filteredClassMaterials = useMemo(
+    () =>
+      classMaterials.filter((c) =>
+        c.title.toLowerCase().includes(searchTerm.toLowerCase())
+      ),
+    [classMaterials, searchTerm]
+  );
+  const filteredPrograms = useMemo(
+    () =>
+      programs.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.description.toLowerCase().includes(searchTerm.toLowerCase())
+      ),
+    [programs, searchTerm]
   );
   const StatIcon = ({ icon: IconComponent, color }) => (
     <IconComponent
@@ -2285,6 +2366,202 @@ const Administrator = () => {
   const isTodayCompleted = daysOfLearning.lastCompletedDate === todayStr;
   const isChallengeCompleted =
     daysOfLearning.completedDays >= daysOfLearning.totalDays;
+  // Handlers from sub-components
+  // From Administra
+  const handleEditAssignment = (assignment) => {
+    setFormData({
+      id: assignment.id,
+      title: assignment.title,
+      description: assignment.description,
+      dueDate: assignment.dueDate,
+      points: assignment.points,
+      studentId: assignment.studentId,
+    });
+    setSelectedForm("assignment-edit");
+  };
+  const handleDeleteAssignment = (assignmentId) => {
+    if (window.confirm("Are you sure you want to delete this assignment?")) {
+      deleteAssignment(assignmentId);
+      alert("Assignment deleted successfully!");
+    }
+  };
+  const handleEditExercise = (exercise) => {
+    setFormData({
+      id: exercise.id,
+      title: exercise.title,
+      description: exercise.description,
+      points: exercise.points,
+      studentId: exercise.studentId,
+    });
+    setSelectedForm("exercise-edit");
+  };
+  const handleDeleteExercise = (exerciseId) => {
+    if (window.confirm("Are you sure you want to delete this exercise?")) {
+      deleteExercise(exerciseId);
+      alert("Exercise deleted successfully!");
+    }
+  };
+  const handleEditProject = (project) => {
+    setFormData({
+      id: project.id,
+      title: project.title,
+      description: project.description,
+      dueDate: project.dueDate,
+      points: project.points,
+      studentId: project.studentId,
+    });
+    setSelectedForm("project-edit");
+  };
+  const handleDeleteProject = (projectId) => {
+    if (window.confirm("Are you sure you want to delete this project?")) {
+      deleteProject(projectId);
+      alert("Project deleted successfully!");
+    }
+  };
+  const handleMarkSubmitted = (id, type) => {
+    if (type === "assignment") {
+      updateAssignment(id, { status: "submitted" });
+      alert("Assignment marked as submitted!");
+    } else if (type === "exercise") {
+      updateExercise(id, { status: "submitted" });
+      alert("Exercise marked as submitted!");
+    } else if (type === "project") {
+      updateProject(id, { status: "submitted" });
+      alert("Project marked as submitted!");
+    }
+  };
+  const handleGradeChange = (id, value) => {
+    setFormData((prev) => ({ ...prev, [id]: value }));
+  };
+  const handleGradeSubmit = (id, type) => {
+    const grade = parseFloat(formData[id]);
+    let item;
+    let points;
+    if (type === "assignment") {
+      item = assignments.find((a) => a.id === id);
+      points = item.points;
+      if (isNaN(grade) || grade < 0 || grade > points) {
+        alert(`Please enter a valid grade between 0 and ${points} points.`);
+        return;
+      }
+      updateAssignment(id, { status: "graded", grade });
+    } else if (type === "exercise") {
+      item = exercises.find((e) => e.id === id);
+      points = item.points;
+      if (isNaN(grade) || grade < 0 || grade > points) {
+        alert(`Please enter a valid grade between 0 and ${points} points.`);
+        return;
+      }
+      updateExercise(id, { status: "graded", grade });
+    } else if (type === "project") {
+      item = projects.find((p) => p.id === id);
+      points = item.points;
+      if (isNaN(grade) || grade < 0 || grade > points) {
+        alert(`Please enter a valid grade between 0 and ${points} points.`);
+        return;
+      }
+      updateProject(id, { status: "graded", grade });
+    }
+    setFormData((prev) => ({ ...prev, [id]: "" }));
+    alert("Grade submitted successfully!");
+  };
+  // From Adminis
+  const handleEditAttendance = (record) => {
+    setFormData({
+      id: record.id,
+      date: record.date,
+      status: record.status,
+      topic: record.topic,
+      studentId: record.studentId,
+    });
+    setSelectedForm("attendance-edit");
+  };
+  const handleDeleteAttendance = (attendanceId) => {
+    if (
+      window.confirm("Are you sure you want to delete this attendance record?")
+    ) {
+      deleteAttendance(attendanceId);
+      alert("Attendance record deleted successfully!");
+    }
+  };
+  const handleEditRoadmapItem = (roadmapItem) => {
+    setFormData({
+      id: roadmapItem.id,
+      phase: roadmapItem.phase,
+      term: roadmapItem.term,
+      status: roadmapItem.status,
+    });
+    setSelectedForm("roadmap-edit");
+  };
+  const handleSetCurrentWeekLocal = (roadmapId, weekIndex) => {
+    setCurrentWeek(roadmapId, weekIndex);
+    alert("Current week set successfully!");
+  };
+  const handleToggleSubTopicCompleteLocal = (
+    roadmapId,
+    weekIndex,
+    subTopicId
+  ) => {
+    toggleSubTopicComplete(roadmapId, weekIndex, subTopicId);
+    alert("Subtopic completion status toggled!");
+  };
+  const handleDeleteSubTopicLocal = (roadmapId, weekIndex, subTopicId) => {
+    if (window.confirm("Are you sure you want to delete this subtopic?")) {
+      deleteSubTopic(roadmapId, weekIndex, subTopicId);
+      alert("Subtopic deleted successfully!");
+    }
+  };
+  const handleDeleteRoadmapItemLocal = (roadmapId) => {
+    if (window.confirm("Are you sure you want to delete this roadmap item?")) {
+      deleteRoadmapItem(roadmapId);
+      alert("Roadmap item deleted successfully!");
+    }
+  };
+  const handleEditClassMaterial = (material) => {
+    setFormData({
+      id: material.id,
+      title: material.title,
+      week: material.week,
+      resources: material.resources,
+      topics: material.topics.join(", "),
+    });
+    setSelectedForm("classmaterial-edit");
+  };
+  const handleDeleteClassMaterial = (materialId) => {
+    if (
+      window.confirm("Are you sure you want to delete this class material?")
+    ) {
+      deleteClassMaterial(materialId);
+      alert("Class material deleted successfully!");
+    }
+  };
+  const handleEditProgram = (program) => {
+    setFormData({
+      id: program.id,
+      name: program.name,
+      description: program.description,
+      totalMilestones: program.totalMilestones,
+    });
+    setSelectedForm("program-edit");
+  };
+  const handleDeleteProgram = (programId) => {
+    if (window.confirm("Are you sure you want to delete this program?")) {
+      deleteProgram(programId);
+      alert("Program deleted successfully!");
+    }
+  };
+  const handleAdminToggleMilestone = (programId, milestoneId) => {
+    adminToggleMilestoneComplete(programId, milestoneId);
+    alert("Milestone completion status updated!");
+  };
+  const handleApproveJoin = (programId) => {
+    approveJoinRequest(programId, 1);
+    alert("Join request approved!");
+  };
+  const handleRejectJoin = (programId) => {
+    rejectJoinRequest(programId, 1);
+    alert("Join request rejected!");
+  };
   return (
     <div className="bg-gray-900 min-h-screen">
       {/* Header */}
@@ -2334,336 +2611,1713 @@ const Administrator = () => {
         </div>
       </header>
       <div className="space-y-6 p-6">
-        <Admini
-          stats={stats}
-          StatIcon={StatIcon}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          selectedForm={selectedForm}
-          setSelectedForm={setSelectedForm}
-          setFormData={setFormData}
-          formData={formData}
-          handleFormChange={handleFormChange}
-          handleFormSubmit={handleFormSubmit}
-          renderForm={renderForm}
-          getFormTitle={getFormTitle}
-          events={events}
-          handleEditEvent={handleEditEvent}
-          deleteEvent={deleteEvent}
-          pendingActions={pendingActions}
-          announcements={announcements}
-          handleEditAnnouncement={handleEditAnnouncement}
-          deleteAnnouncement={deleteAnnouncement}
-        />
-        <Administra
-          activeTab={activeTab}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          setSelectedForm={setSelectedForm}
-          setFormData={setFormData}
-          formData={formData}
-          recentStudents={recentStudents}
-          assignments={assignments}
-          exercises={exercises}
-          projects={projects}
-        />
-        <Adminis
-          activeTab={activeTab}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          setSelectedForm={setSelectedForm}
-          setFormData={setFormData}
-          formData={formData}
-          recentStudents={recentStudents}
-          attendance={attendance}
-          roadmapItems={roadmapItems}
-          classMaterials={classMaterials}
-          programs={programs}
-        />
-        <SessionsManagement
-          directory={directory}
-          approveSession={approveSession}
-          rejectSession={rejectSession}
-          startSession={startSession}
-          deleteSession={deleteSession}
-        />
-        <RoadmapManagement
-          roadmapItems={roadmapItems}
-          setCurrentWeek={setCurrentWeek}
-          markWeekPassed={markWeekPassed}
-        />
-        {/* 100 Days To BECE Management */}
-        <div className="mt-8">
-          <h2 className="text-white text-2xl font-bold mb-6">
-            100 Days To BECE
-          </h2>
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-white text-lg font-semibold">
-                  Auto-Progress for Daily Readings
-                </h3>
-                <p className="text-gray-400">
-                  Enable automatic daily completion and ticking of boxes
-                </p>
-              </div>
-              <button
-                onClick={() =>
-                  updateDaysOfLearning({ isActive: !daysOfLearning.isActive })
-                }
-                className={`px-4 py-2 rounded-lg font-semibold ${
-                  daysOfLearning.isActive
-                    ? "bg-green-500 text-white"
-                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                }`}
-              >
-                {daysOfLearning.isActive ? "Active" : "Inactive"}
-              </button>
-            </div>
-            <div className="space-y-2 text-gray-400">
-              <p>
-                Completed Days: {daysOfLearning.completedDays} of{" "}
-                {daysOfLearning.totalDays}
-              </p>
-              <p>
-                Last Completed:{" "}
-                {daysOfLearning.lastCompletedDate || "Not started"}
-              </p>
-              <p>Today's Status: {isTodayCompleted ? "Ticked" : "Pending"}</p>
-            </div>
-            <button
-              onClick={() => {
-                if (isTodayCompleted) {
-                  alert("Already ticked for today!");
-                  return;
-                }
-                if (isChallengeCompleted) {
-                  alert("Challenge completed!");
-                  return;
-                }
-                updateDaysOfLearning({
-                  completedDays: daysOfLearning.completedDays + 1,
-                  lastCompletedDate: todayStr,
-                  activities: [
-                    ...daysOfLearning.activities,
-                    {
-                      day: daysOfLearning.completedDays + 1,
-                      content: "Manually ticked by admin",
-                      timestamp: new Date().toISOString(),
-                    },
-                  ],
-                });
-                alert("Day ticked successfully!");
+        {/* Dashboard Header */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-white text-3xl font-bold">
+              Administrator Dashboard
+            </h1>
+            <p className="text-gray-400 mt-2">
+              Manage students, assignments, exercises, roadmap, and system
+              settings
+            </p>
+          </div>
+          <div className="flex items-center space-x-3 flex-wrap gap-2">
+            <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2">
+              <Bell className="w-4 h-4" />
+              <span>Notifications</span>
+            </button>
+            <select
+              value={selectedForm}
+              onChange={(e) => {
+                setSelectedForm(e.target.value);
+                setFormData({});
               }}
-              disabled={isTodayCompleted || isChallengeCompleted}
-              className={`mt-4 px-4 py-2 rounded-lg font-semibold ${
-                isTodayCompleted || isChallengeCompleted
-                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                  : "bg-yellow-500 hover:bg-yellow-600 text-gray-900"
-              }`}
+              className="bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700"
             >
-              {isChallengeCompleted
-                ? "Challenge Completed"
-                : isTodayCompleted
-                ? "Already Ticked Today"
-                : "Manually Tick Next Day"}
+              <option value="">Select Content Type</option>
+              <option value="announcement">New Announcement</option>
+              <option value="assignment">New Assignment</option>
+              <option value="exercise">New Exercise</option>
+              <option value="project">New Project</option>
+              <option value="event">New Event</option>
+              <option value="attendance">New Attendance</option>
+              <option value="roadmap">New Roadmap Item</option>
+              <option value="week">New Week</option>
+              <option value="subtopic">New Subtopic</option>
+              <option value="classmaterial">New Class Material</option>
+              <option value="program">New Program</option>
+              <option value="milestone">New Milestone</option>
+            </select>
+            <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2">
+              <Settings className="w-4 h-4" />
+              <span>Settings</span>
             </button>
           </div>
         </div>
-        {/* Social Connections Management */}
-        <div className="mt-8">
-          <h2 className="text-white text-2xl font-bold mb-6">
-            Social Connections
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-              <h3 className="text-white font-semibold mb-4">
-                Pending Friend Requests
+
+        {/* Form Modal */}
+        {selectedForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-lg p-8 border border-gray-700 max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-white text-2xl font-bold">
+                  {getFormTitle(selectedForm, !!formData.id)}
+                </h2>
+                <button
+                  onClick={() => {
+                    setSelectedForm("");
+                    setFormData({});
+                  }}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <form onSubmit={handleFormSubmit}>
+                {renderForm()}
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedForm("");
+                      setFormData({});
+                    }}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-6 py-2 rounded-lg font-semibold"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Stats Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((stat, index) => (
+            <div
+              key={index}
+              className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <StatIcon icon={stat.icon} color={stat.color} />
+                <TrendingUp className="w-4 h-4 text-gray-400" />
+              </div>
+              <h3 className="text-white text-3xl font-bold mb-1">
+                {stat.value}
               </h3>
-              {pendingRequests.length > 0 ? (
-                pendingRequests.map((req) => {
-                  const fromUser = directory.find((u) => u.id === req.fromId);
-                  return (
-                    <div
-                      key={req.id}
-                      className="flex items-center justify-between p-3 bg-gray-700 rounded mb-3"
-                    >
-                      <div>
-                        <p className="text-white">
-                          {fromUser?.name || "Unknown"}
+              <p className="text-gray-400 text-sm">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="bg-gray-800 rounded-lg p-2 border border-gray-700">
+          <div className="flex space-x-2 overflow-x-auto">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+                activeTab === "overview"
+                  ? "bg-yellow-500 text-gray-900"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab("announcements")}
+              className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+                activeTab === "announcements"
+                  ? "bg-yellow-500 text-gray-900"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Announcements
+            </button>
+            <button
+              onClick={() => setActiveTab("assignments")}
+              className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+                activeTab === "assignments"
+                  ? "bg-yellow-500 text-gray-900"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Assignments
+            </button>
+            <button
+              onClick={() => setActiveTab("exercises")}
+              className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+                activeTab === "exercises"
+                  ? "bg-yellow-500 text-gray-900"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Exercises
+            </button>
+            <button
+              onClick={() => setActiveTab("projects")}
+              className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+                activeTab === "projects"
+                  ? "bg-yellow-500 text-gray-900"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Projects
+            </button>
+            <button
+              onClick={() => setActiveTab("attendance")}
+              className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+                activeTab === "attendance"
+                  ? "bg-yellow-500 text-gray-900"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Attendance
+            </button>
+            <button
+              onClick={() => setActiveTab("roadmap")}
+              className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+                activeTab === "roadmap"
+                  ? "bg-yellow-500 text-gray-900"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Roadmap
+            </button>
+            <button
+              onClick={() => setActiveTab("classmaterials")}
+              className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+                activeTab === "classmaterials"
+                  ? "bg-yellow-500 text-gray-900"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Class Materials
+            </button>
+            <button
+              onClick={() => setActiveTab("programs")}
+              className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+                activeTab === "programs"
+                  ? "bg-yellow-500 text-gray-900"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Programs
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        <div className="mt-8">
+          {activeTab === "overview" && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <h3 className="text-white text-lg font-semibold mb-4 flex items-center space-x-2">
+                  <Calendar className="w-5 h-5 text-yellow-500" />
+                  <span>Upcoming Events</span>
+                </h3>
+                <div className="space-y-3">
+                  {events.length === 0 ? (
+                    <p className="text-gray-400 text-sm text-center py-4">
+                      No events scheduled
+                    </p>
+                  ) : (
+                    events.map((event) => (
+                      <div
+                        key={event.id}
+                        className="bg-gray-900 rounded-lg p-4 border border-gray-700"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-white font-semibold">
+                              {event.event}
+                            </h4>
+                            <p className="text-gray-400 text-sm">
+                              {event.date} at {event.time}
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleEditEvent(event)}
+                              className="text-yellow-500 hover:text-yellow-400"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => deleteEvent(event.id)}
+                              className="text-red-500 hover:text-red-400"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedForm("event");
+                    setFormData({});
+                  }}
+                  className="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                >
+                  Add Event
+                </button>
+              </div>
+              <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <h3 className="text-white text-lg font-semibold mb-4 flex items-center space-x-2">
+                  <Bell className="w-5 h-5 text-yellow-500" />
+                  <span>Pending Actions</span>
+                </h3>
+                {pendingActions.length === 0 ? (
+                  <p className="text-gray-400 text-sm text-center py-4">
+                    No pending actions
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingActions.map((action) => (
+                      <div
+                        key={action.id}
+                        className="bg-gray-900 rounded-lg p-4 border border-gray-700"
+                      >
+                        <p className="text-white font-semibold">
+                          {action.type}
                         </p>
                         <p className="text-gray-400 text-sm">
-                          {fromUser?.email}
+                          {action.student} - {action.description}
                         </p>
                       </div>
-                      <div className="space-x-2">
-                        <button
-                          onClick={() => acceptFriendRequest(req.id)}
-                          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          onClick={() => rejectFriendRequest(req.id)}
-                          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-gray-400">No pending friend requests.</p>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-              <h3 className="text-white font-semibold mb-4">Friends</h3>
-              {friendsForAdmin.length > 0 ? (
-                friendsForAdmin.map((friendId) => {
-                  const friend = directory.find((u) => u.id === friendId);
-                  return (
-                    <div
-                      key={friendId}
-                      className="flex items-center justify-between p-3 bg-gray-700 rounded mb-3"
-                    >
-                      <div>
-                        <p className="text-white">
-                          {friend?.name || "Unknown"}
-                        </p>
-                        <p className="text-gray-400 text-sm">{friend?.role}</p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSelectedUser(friend);
-                          setIsChatOpen(true);
-                        }}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
-                      >
-                        Chat
-                      </button>
-                    </div>
-                  );
-                })
+          )}
+          {activeTab === "announcements" && (
+            <div className="space-y-4">
+              <h3 className="text-white text-lg font-semibold mb-4 flex items-center space-x-2">
+                <Bell className="w-5 h-5 text-yellow-500" />
+                <span>Announcements</span>
+              </h3>
+              {announcements.length === 0 ? (
+                <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+                  <p className="text-gray-400 text-lg">
+                    No announcements available
+                  </p>
+                </div>
               ) : (
-                <p className="text-gray-400">No friends yet.</p>
-              )}
-            </div>
-          </div>
-        </div>
-        {/* Students Directory with Pictures and Signup Details */}
-        <div className="mt-8">
-          <h2 className="text-white text-2xl font-bold mb-6">
-            Students Directory
-          </h2>
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            {students.length === 0 ? (
-              <p className="text-gray-400 text-center">No students found.</p>
-            ) : (
-              <div className="space-y-4">
-                {students.map((student) => (
+                announcements.map((announcement) => (
                   <div
-                    key={student.id}
-                    className="flex items-start space-x-4 p-4 bg-gray-900 rounded-lg border border-gray-700"
+                    key={announcement.id}
+                    className="bg-gray-900 rounded-lg p-4 border border-gray-700"
                   >
-                    <img
-                      src={
-                        student.pictureUrl ||
-                        "https://via.placeholder.com/48?text=👤"
-                      }
-                      alt={student.name}
-                      className="w-12 h-12 rounded-full object-cover flex-shrink-0 mt-1"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-white font-semibold truncate">
-                        {student.name}
-                      </h3>
-                      <p className="text-gray-400 text-sm">ID: {student.id}</p>
-                      <p className="text-gray-300 text-sm truncate">
-                        {student.email}
-                      </p>
-                      {student.cohort && (
-                        <p className="text-gray-500 text-xs">
-                          Cohort: {student.cohort}
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h4 className="text-white font-semibold">
+                          {announcement.title}
+                        </h4>
+                        <p className="text-gray-400 text-sm">
+                          {announcement.content}
                         </p>
-                      )}
-                      {student.startDate && (
-                        <p className="text-gray-500 text-xs">
-                          Joined:{" "}
-                          {new Date(student.startDate).toLocaleDateString()}
+                        <p className="text-gray-500 text-xs mt-2">
+                          {announcement.date} at {announcement.time} by{" "}
+                          {announcement.author}
                         </p>
-                      )}
-                      {student.bio && (
-                        <p className="text-gray-500 text-xs truncate mt-1">
-                          Bio: {student.bio}
-                        </p>
-                      )}
-                      {student.location && (
-                        <p className="text-gray-500 text-xs">
-                          Location: {student.location}
-                        </p>
-                      )}
-                      {student.phone && (
-                        <p className="text-gray-500 text-xs">
-                          Phone: {student.phone}
-                        </p>
-                      )}
-                      {student.github && (
-                        <p className="text-gray-500 text-xs">
-                          GitHub:{" "}
-                          <a
-                            href={`https://github.com/${student.github}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-400 hover:underline"
-                          >
-                            @{student.github}
-                          </a>
-                        </p>
-                      )}
-                      {student.linkedin && (
-                        <p className="text-gray-500 text-xs">
-                          LinkedIn:{" "}
-                          <a
-                            href={`https://linkedin.com/in/${student.linkedin}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-400 hover:underline"
-                          >
-                            @{student.linkedin}
-                          </a>
-                        </p>
-                      )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEditAnnouncement(announcement)}
+                          className="text-yellow-500 hover:text-yellow-400"
+                          title="Edit Announcement"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteAnnouncement(announcement.id)}
+                          className="text-red-500 hover:text-red-400"
+                          title="Delete Announcement"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                ))}
+                ))
+              )}
+              <button
+                onClick={() => {
+                  setSelectedForm("announcement");
+                  setFormData({});
+                }}
+                className="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+              >
+                Add Announcement
+              </button>
+            </div>
+          )}
+          {activeTab === "assignments" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white text-lg font-semibold">
+                  All Assignments
+                </h3>
+                <button
+                  onClick={() => {
+                    setSelectedForm("assignment");
+                    setFormData({});
+                  }}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+                >
+                  New Assignment
+                </button>
               </div>
-            )}
-          </div>
-        </div>
-        {/* New Team and Private Messaging Sections */}
-        <TeamMessaging />
-        <PrivateMessaging />
-        {isChatOpen && selectedUser && (
-          <ChatModal
-            onClose={() => setIsChatOpen(false)}
-            otherUser={selectedUser}
-            currentUser={adminUser}
+              <input
+                type="text"
+                placeholder="Search assignments..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+              />
+              {filteredAssignments.length === 0 ? (
+                <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+                  <p className="text-gray-400 text-lg">No assignments yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredAssignments.map((assignment) => (
+                    <div
+                      key={assignment.id}
+                      className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h4 className="text-white font-semibold text-lg mb-2">
+                            {assignment.title}
+                          </h4>
+                          {assignment.description && (
+                            <p className="text-gray-400 text-sm mb-3">
+                              {assignment.description}
+                            </p>
+                          )}
+                          <div className="flex items-center space-x-4 text-sm">
+                            <span className="text-gray-400">
+                              Due: {assignment.dueDate}
+                            </span>
+                            <span className="text-gray-400">
+                              {assignment.points} points
+                            </span>
+                            <span className="text-gray-400">
+                              Student:{" "}
+                              {
+                                recentStudents.find(
+                                  (s) => s.id === assignment.studentId
+                                )?.name
+                              }
+                            </span>
+                          </div>
+                          {assignment.createdDate && assignment.createdTime && (
+                            <p className="text-gray-500 text-xs mt-2">
+                              Created: {assignment.createdDate} at{" "}
+                              {assignment.createdTime}
+                            </p>
+                          )}
+                          {assignment.status === "pending" && (
+                            <div className="mt-4 flex items-center space-x-3">
+                              <button
+                                onClick={() =>
+                                  handleMarkSubmitted(
+                                    assignment.id,
+                                    "assignment"
+                                  )
+                                }
+                                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
+                              >
+                                Mark as Submitted
+                              </button>
+                            </div>
+                          )}
+                          {assignment.status === "submitted" && (
+                            <div className="mt-4 flex items-center space-x-3">
+                              <input
+                                type="number"
+                                value={formData[assignment.id] || ""}
+                                onChange={(e) =>
+                                  handleGradeChange(
+                                    assignment.id,
+                                    e.target.value
+                                  )
+                                }
+                                className="w-24 bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                                placeholder="Grade"
+                              />
+                              <button
+                                onClick={() =>
+                                  handleGradeSubmit(assignment.id, "assignment")
+                                }
+                                className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+                              >
+                                Submit Grade
+                              </button>
+                            </div>
+                          )}
+                          {assignment.status === "graded" && (
+                            <div className="mt-3">
+                              <p className="text-green-400 text-sm font-semibold">
+                                Graded: {assignment.grade}/{assignment.points}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              assignment.status === "graded"
+                                ? "bg-green-500 text-white"
+                                : assignment.status === "submitted"
+                                ? "bg-blue-500 text-white"
+                                : "bg-yellow-500 text-gray-900"
+                            }`}
+                          >
+                            {assignment.status.toUpperCase()}
+                          </span>
+                          <button
+                            onClick={() => handleEditAssignment(assignment)}
+                            className="text-yellow-500 hover:text-yellow-400"
+                            title="Edit Assignment"
+                          >
+                            <Edit className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDeleteAssignment(assignment.id)
+                            }
+                            className="text-red-500 hover:text-red-400"
+                            title="Delete Assignment"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {activeTab === "exercises" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
+                  <Dumbbell className="w-5 h-5 text-yellow-500" />
+                  <span>All Exercises</span>
+                </h3>
+                <button
+                  onClick={() => {
+                    setSelectedForm("exercise");
+                    setFormData({});
+                  }}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+                >
+                  New Exercise
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Search exercises..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+              />
+              {filteredExercises.length === 0 ? (
+                <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+                  <p className="text-gray-400 text-lg">No exercises yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredExercises.map((exercise) => (
+                    <div
+                      key={exercise.id}
+                      className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h4 className="text-white font-semibold text-lg mb-2">
+                            {exercise.title}
+                          </h4>
+                          {exercise.description && (
+                            <p className="text-gray-400 text-sm mb-3">
+                              {exercise.description}
+                            </p>
+                          )}
+                          <div className="flex items-center space-x-4 text-sm">
+                            <span className="text-gray-400">
+                              {exercise.points} points
+                            </span>
+                            <span className="text-gray-400">
+                              Student:{" "}
+                              {
+                                recentStudents.find(
+                                  (s) => s.id === exercise.studentId
+                                )?.name
+                              }
+                            </span>
+                          </div>
+                          {exercise.createdDate && exercise.createdTime && (
+                            <p className="text-gray-500 text-xs mt-2">
+                              Created: {exercise.createdDate} at{" "}
+                              {exercise.createdTime}
+                            </p>
+                          )}
+                          {exercise.status === "pending" && (
+                            <div className="mt-4 flex items-center space-x-3">
+                              <button
+                                onClick={() =>
+                                  handleMarkSubmitted(exercise.id, "exercise")
+                                }
+                                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
+                              >
+                                Mark as Submitted
+                              </button>
+                            </div>
+                          )}
+                          {exercise.status === "submitted" && (
+                            <div className="mt-4 flex items-center space-x-3">
+                              <input
+                                type="number"
+                                value={formData[exercise.id] || ""}
+                                onChange={(e) =>
+                                  handleGradeChange(exercise.id, e.target.value)
+                                }
+                                className="w-24 bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                                placeholder="Grade"
+                              />
+                              <button
+                                onClick={() =>
+                                  handleGradeSubmit(exercise.id, "exercise")
+                                }
+                                className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+                              >
+                                Submit Grade
+                              </button>
+                            </div>
+                          )}
+                          {exercise.status === "graded" && (
+                            <div className="mt-3">
+                              <p className="text-green-400 text-sm font-semibold">
+                                Graded: {exercise.grade}/{exercise.points}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              exercise.status === "graded"
+                                ? "bg-green-500 text-white"
+                                : exercise.status === "submitted"
+                                ? "bg-blue-500 text-white"
+                                : "bg-yellow-500 text-gray-900"
+                            }`}
+                          >
+                            {exercise.status.toUpperCase()}
+                          </span>
+                          <button
+                            onClick={() => handleEditExercise(exercise)}
+                            className="text-yellow-500 hover:text-yellow-400"
+                            title="Edit Exercise"
+                          >
+                            <Edit className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteExercise(exercise.id)}
+                            className="text-red-500 hover:text-red-400"
+                            title="Delete Exercise"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {activeTab === "projects" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
+                  <FolderOpen className="w-5 h-5 text-yellow-500" />
+                  <span>All Projects</span>
+                </h3>
+                <button
+                  onClick={() => {
+                    setSelectedForm("project");
+                    setFormData({});
+                  }}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+                >
+                  New Project
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Search projects..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+              />
+              {filteredProjects.length === 0 ? (
+                <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+                  <p className="text-gray-400 text-lg">No projects yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredProjects.map((project) => (
+                    <div
+                      key={project.id}
+                      className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h4 className="text-white font-semibold text-lg mb-2">
+                            {project.title}
+                          </h4>
+                          {project.description && (
+                            <p className="text-gray-400 text-sm mb-3">
+                              {project.description}
+                            </p>
+                          )}
+                          <div className="flex items-center space-x-4 text-sm">
+                            <span className="text-gray-400">
+                              Due: {project.dueDate}
+                            </span>
+                            <span className="text-gray-400">
+                              {project.points} points
+                            </span>
+                            <span className="text-gray-400">
+                              Student:{" "}
+                              {
+                                recentStudents.find(
+                                  (s) => s.id === project.studentId
+                                )?.name
+                              }
+                            </span>
+                          </div>
+                          {project.createdDate && project.createdTime && (
+                            <p className="text-gray-500 text-xs mt-2">
+                              Created: {project.createdDate} at{" "}
+                              {project.createdTime}
+                            </p>
+                          )}
+                          {project.status === "pending" && (
+                            <div className="mt-4 flex items-center space-x-3">
+                              <button
+                                onClick={() =>
+                                  handleMarkSubmitted(project.id, "project")
+                                }
+                                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
+                              >
+                                Mark as Submitted
+                              </button>
+                            </div>
+                          )}
+                          {project.status === "submitted" && (
+                            <div className="mt-4 flex items-center space-x-3">
+                              <input
+                                type="number"
+                                value={formData[project.id] || ""}
+                                onChange={(e) =>
+                                  handleGradeChange(project.id, e.target.value)
+                                }
+                                className="w-24 bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+                                placeholder="Grade"
+                              />
+                              <button
+                                onClick={() =>
+                                  handleGradeSubmit(project.id, "project")
+                                }
+                                className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+                              >
+                                Submit Grade
+                              </button>
+                            </div>
+                          )}
+                          {project.status === "graded" && (
+                            <div className="mt-3">
+                              <p className="text-green-400 text-sm font-semibold">
+                                Graded: {project.grade}/{project.points}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              project.status === "graded"
+                                ? "bg-green-500 text-white"
+                                : project.status === "submitted"
+                                ? "bg-blue-500 text-white"
+                                : "bg-yellow-500 text-gray-900"
+                            }`}
+                          >
+                            {project.status.toUpperCase()}
+                          </span>
+                          <button
+                            onClick={() => handleEditProject(project)}
+                            className="text-yellow-500 hover:text-yellow-400"
+                            title="Edit Project"
+                          >
+                            <Edit className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProject(project.id)}
+                            className="text-red-500 hover:text-red-400"
+                            title="Delete Project"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {activeTab === "attendance" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
+                  <UserCheck className="w-5 h-5 text-yellow-500" />
+                  <span>All Attendance Records</span>
+                </h3>
+                <button
+                  onClick={() => {
+                    setSelectedForm("attendance");
+                    setFormData({});
+                  }}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+                >
+                  New Attendance
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Search attendance records..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+              />
+              {filteredAttendance.length === 0 ? (
+                <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+                  <p className="text-gray-400 text-lg">
+                    No attendance records yet
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredAttendance.map((record) => (
+                    <div
+                      key={record.id}
+                      className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h4 className="text-white font-semibold text-lg mb-2">
+                            {record.topic}
+                          </h4>
+                          <div className="flex items-center space-x-4 text-sm">
+                            <span className="text-gray-400">
+                              Date: {record.date}
+                            </span>
+                            <span className="text-gray-400">
+                              Student:{" "}
+                              {
+                                recentStudents.find(
+                                  (s) => s.id === record.studentId
+                                )?.name
+                              }
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              record.status === "present"
+                                ? "bg-green-500 text-white"
+                                : "bg-red-500 text-white"
+                            }`}
+                          >
+                            {record.status.toUpperCase()}
+                          </span>
+                          <button
+                            onClick={() => handleEditAttendance(record)}
+                            className="text-yellow-500 hover:text-yellow-400"
+                            title="Edit Attendance"
+                          >
+                            <Edit className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAttendance(record.id)}
+                            className="text-red-500 hover:text-red-400"
+                            title="Delete Attendance"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {activeTab === "roadmap" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
+                  <Map className="w-5 h-5 text-yellow-500" />
+                  <span>All Roadmap Items</span>
+                </h3>
+                <button
+                  onClick={() => {
+                    setSelectedForm("roadmap");
+                    setFormData({});
+                  }}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+                >
+                  New Roadmap Item
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Search roadmap items..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+              />
+              {filteredRoadmapItems.length === 0 ? (
+                <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+                  <p className="text-gray-400 text-lg">No roadmap items yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredRoadmapItems.map((roadmap) => (
+                    <div
+                      key={roadmap.id}
+                      className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h4 className="text-white font-semibold text-lg mb-2">
+                            {roadmap.phase} - {roadmap.term}
+                          </h4>
+                          <div className="flex items-center space-x-4 text-sm mb-4">
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                roadmap.status === "completed"
+                                  ? "bg-green-500 text-white"
+                                  : roadmap.status === "in-progress"
+                                  ? "bg-blue-500 text-white"
+                                  : "bg-gray-500 text-white"
+                              }`}
+                            >
+                              {roadmap.status.toUpperCase()}
+                            </span>
+                          </div>
+                          {roadmap.weeks && roadmap.weeks.length > 0 && (
+                            <div className="mt-4 space-y-3">
+                              <h5 className="text-gray-400 text-sm font-semibold">
+                                Weeks:
+                              </h5>
+                              {roadmap.weeks.map((week, weekIndex) => (
+                                <div
+                                  key={weekIndex}
+                                  className="bg-gray-900 rounded-lg p-4 border border-gray-700"
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h6 className="text-white font-semibold">
+                                      Week {week.weekNumber}: {week.topic}
+                                    </h6>
+                                    <button
+                                      onClick={() =>
+                                        handleSetCurrentWeekLocal(
+                                          roadmap.id,
+                                          weekIndex
+                                        )
+                                      }
+                                      className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+                                        week.current
+                                          ? "bg-yellow-500 text-gray-900"
+                                          : "bg-gray-700 text-white hover:bg-gray-600"
+                                      }`}
+                                    >
+                                      {week.current
+                                        ? "Current Week"
+                                        : "Set as Current"}
+                                    </button>
+                                  </div>
+                                  {week.subTopics &&
+                                    week.subTopics.length > 0 && (
+                                      <div className="mt-3 space-y-2">
+                                        {week.subTopics.map((subTopic) => (
+                                          <div
+                                            key={subTopic.id}
+                                            className="flex items-center justify-between bg-gray-800 rounded-lg p-3"
+                                          >
+                                            <div className="flex items-center space-x-3">
+                                              <input
+                                                type="checkbox"
+                                                checked={subTopic.completed}
+                                                onChange={() =>
+                                                  handleToggleSubTopicCompleteLocal(
+                                                    roadmap.id,
+                                                    weekIndex,
+                                                    subTopic.id
+                                                  )
+                                                }
+                                                className="w-4 h-4"
+                                              />
+                                              <span
+                                                className={`text-sm ${
+                                                  subTopic.completed
+                                                    ? "text-gray-500 line-through"
+                                                    : "text-white"
+                                                }`}
+                                              >
+                                                {subTopic.name}
+                                              </span>
+                                            </div>
+                                            <button
+                                              onClick={() =>
+                                                handleDeleteSubTopicLocal(
+                                                  roadmap.id,
+                                                  weekIndex,
+                                                  subTopic.id
+                                                )
+                                              }
+                                              className="text-red-500 hover:text-red-400"
+                                              title="Delete Subtopic"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  <button
+                                    onClick={() => {
+                                      setSelectedForm("subtopic");
+                                      setFormData({
+                                        roadmapId: roadmap.id,
+                                        weekIndex,
+                                      });
+                                    }}
+                                    className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                                  >
+                                    Add Subtopic
+                                  </button>
+                                </div>
+                              ))}
+                              <button
+                                onClick={() => {
+                                  setSelectedForm("week");
+                                  setFormData({ roadmapId: roadmap.id });
+                                }}
+                                className="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                              >
+                                Add Week
+                              </button>
+                            </div>
+                          )}
+                          {(!roadmap.weeks || roadmap.weeks.length === 0) && (
+                            <button
+                              onClick={() => {
+                                setSelectedForm("week");
+                                setFormData({ roadmapId: roadmap.id });
+                              }}
+                              className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                            >
+                              Add First Week
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-3 ml-4">
+                          <button
+                            onClick={() => handleEditRoadmapItem(roadmap)}
+                            className="text-yellow-500 hover:text-yellow-400"
+                            title="Edit Roadmap Item"
+                          >
+                            <Edit className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDeleteRoadmapItemLocal(roadmap.id)
+                            }
+                            className="text-red-500 hover:text-red-400"
+                            title="Delete Roadmap Item"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {activeTab === "classmaterials" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
+                  <BookOpen className="w-5 h-5 text-yellow-500" />
+                  <span>All Class Materials</span>
+                </h3>
+                <button
+                  onClick={() => {
+                    setSelectedForm("classmaterial");
+                    setFormData({});
+                  }}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+                >
+                  New Class Material
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Search class materials..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+              />
+              {filteredClassMaterials.length === 0 ? (
+                <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+                  <p className="text-gray-400 text-lg">
+                    No class materials yet
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredClassMaterials.map((material) => (
+                    <div
+                      key={material.id}
+                      className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <BookOpen className="w-6 h-6 text-yellow-500" />
+                            <h4 className="text-white font-semibold text-lg">
+                              {material.title}
+                            </h4>
+                          </div>
+                          <span className="inline-block bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold">
+                            Week {material.week}
+                          </span>
+                          <span className="ml-2 inline-block bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold">
+                            {material.resources} resources
+                          </span>
+                          <div className="space-y-2 mt-4">
+                            <p className="text-gray-400 text-sm font-semibold mb-2">
+                              Topics Covered:
+                            </p>
+                            {material.topics.map((topic, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center space-x-2 text-gray-300"
+                              >
+                                <CheckCircle className="w-4 h-4 text-yellow-500" />
+                                <span>{topic}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {material.files && material.files.length > 0 && (
+                            <div className="border-t border-gray-700 pt-4 mt-4">
+                              <p className="text-gray-400 text-sm font-semibold mb-3">
+                                Downloadable Files:
+                              </p>
+                              <div className="space-y-2">
+                                {material.files.map((file, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between p-3 bg-gray-900 rounded-lg"
+                                  >
+                                    <div className="flex items-center space-x-3">
+                                      <div className="w-10 h-10 bg-yellow-500 rounded flex items-center justify-center">
+                                        <span className="text-gray-900 text-xs font-bold">
+                                          {file.type}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <p className="text-white font-medium">
+                                          {file.name}
+                                        </p>
+                                        <p className="text-gray-400 text-xs">
+                                          {file.size}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <button className="text-yellow-500 hover:text-yellow-400 transition-colors">
+                                      <Download className="w-5 h-5" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-3 ml-4">
+                          <button
+                            onClick={() => handleEditClassMaterial(material)}
+                            className="text-yellow-500 hover:text-yellow-400"
+                            title="Edit Class Material"
+                          >
+                            <Edit className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDeleteClassMaterial(material.id)
+                            }
+                            className="text-red-500 hover:text-red-400"
+                            title="Delete Class Material"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {activeTab === "programs" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white text-lg font-semibold flex items-center space-x-2">
+                  <Briefcase className="w-5 h-5 text-yellow-500" />
+                  <span>All Programs</span>
+                </h3>
+                <button
+                  onClick={() => {
+                    setSelectedForm("program");
+                    setFormData({});
+                  }}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold"
+                >
+                  New Program
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Search programs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
+              />
+              {filteredPrograms.length === 0 ? (
+                <div className="bg-gray-800 rounded-lg p-12 border border-gray-700 text-center">
+                  <p className="text-gray-400 text-lg">No programs yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredPrograms.map((program) => {
+                    const completedMilestones =
+                      program.milestones?.filter((m) => m.completed).length ||
+                      0;
+                    const total = program.totalMilestones || 0;
+                    const progress =
+                      total > 0
+                        ? ((completedMilestones / total) * 100).toFixed(0)
+                        : 0;
+                    return (
+                      <div
+                        key={program.id}
+                        className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h4 className="text-white font-semibold text-lg mb-2">
+                              {program.name}
+                            </h4>
+                            <p className="text-gray-400 text-sm mb-3">
+                              {program.description}
+                            </p>
+                            <div className="mb-3">
+                              <p className="text-gray-400 text-sm mb-2">
+                                Progress: {completedMilestones}/{total} (
+                                {progress}
+                                %)
+                              </p>
+                              <div className="w-full bg-gray-700 rounded-full h-2">
+                                <div
+                                  className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </div>
+                            {program.pendingRequests &&
+                              program.pendingRequests.length > 0 && (
+                                <div className="mb-4">
+                                  <p className="text-gray-400 text-sm font-semibold mb-2">
+                                    Pending Join Requests:
+                                  </p>
+                                  <div className="space-y-2">
+                                    {program.pendingRequests.map(
+                                      (studentId) => (
+                                        <div
+                                          key={studentId}
+                                          className="flex items-center justify-between bg-yellow-900 p-2 rounded"
+                                        >
+                                          <span className="text-yellow-300 text-sm">
+                                            Julius Dagana (ID: {studentId})
+                                          </span>
+                                          <div className="space-x-2">
+                                            <button
+                                              onClick={() =>
+                                                handleApproveJoin(program.id)
+                                              }
+                                              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs"
+                                            >
+                                              Approve
+                                            </button>
+                                            <button
+                                              onClick={() =>
+                                                handleRejectJoin(program.id)
+                                              }
+                                              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs"
+                                            >
+                                              Reject
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            {program.enrolledStudents &&
+                              program.enrolledStudents.length > 0 && (
+                                <div className="mb-4">
+                                  <p className="text-gray-400 text-sm font-semibold mb-2">
+                                    Enrolled Students:
+                                  </p>
+                                  <div className="space-y-1">
+                                    {program.enrolledStudents.map(
+                                      (studentId) => (
+                                        <span
+                                          key={studentId}
+                                          className="inline-block bg-green-900 text-green-300 px-2 py-1 rounded text-xs"
+                                        >
+                                          Julius Dagana (ID: {studentId})
+                                        </span>
+                                      )
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            {program.milestones &&
+                              program.milestones.length > 0 && (
+                                <div className="mt-4 space-y-3">
+                                  <h5 className="text-gray-400 text-sm font-semibold">
+                                    Milestones:
+                                  </h5>
+                                  {program.milestones.map((milestone) => (
+                                    <div
+                                      key={milestone.id}
+                                      className="bg-gray-900 rounded-lg p-3"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span
+                                          className={`text-sm ${
+                                            milestone.completed
+                                              ? "text-green-400 line-through"
+                                              : "text-white"
+                                          }`}
+                                        >
+                                          {milestone.name}
+                                        </span>
+                                        <div className="flex items-center space-x-2">
+                                          <input
+                                            type="checkbox"
+                                            checked={milestone.completed}
+                                            onChange={() =>
+                                              handleAdminToggleMilestone(
+                                                program.id,
+                                                milestone.id
+                                              )
+                                            }
+                                            className="w-4 h-4"
+                                          />
+                                          <span
+                                            className={`px-2 py-1 rounded-full text-xs ${
+                                              milestone.completed
+                                                ? "bg-green-500 text-white"
+                                                : "bg-gray-500 text-white"
+                                            }`}
+                                          >
+                                            {milestone.completed
+                                              ? "Completed"
+                                              : "Pending"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            {(!program.milestones ||
+                              program.milestones.length === 0) && (
+                              <button
+                                onClick={() => {
+                                  setSelectedForm("milestone");
+                                  setFormData({ programId: program.id });
+                                }}
+                                className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                              >
+                                Add First Milestone
+                              </button>
+                            )}
+                            {program.milestones &&
+                              program.milestones.length <
+                                program.totalMilestones && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedForm("milestone");
+                                    setFormData({ programId: program.id });
+                                  }}
+                                  className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                                >
+                                  Add Milestone
+                                </button>
+                              )}
+                          </div>
+                          <div className="flex items-center space-x-3 ml-4">
+                            <button
+                              onClick={() => handleEditProgram(program)}
+                              className="text-yellow-500 hover:text-yellow-400"
+                              title="Edit Program"
+                            >
+                              <Edit className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProgram(program.id)}
+                              className="text-red-500 hover:text-red-400"
+                              title="Delete Program"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Additional sections outside tabs */}
+          <SessionsManagement
+            directory={directory}
+            approveSession={approveSession}
+            rejectSession={rejectSession}
+            startSession={startSession}
+            deleteSession={deleteSession}
           />
-        )}
+          <RoadmapManagement
+            roadmapItems={roadmapItems}
+            setCurrentWeek={setCurrentWeek}
+            markWeekPassed={markWeekPassed}
+          />
+          {/* 100 Days To BECE Management */}
+          <div className="mt-8">
+            <h2 className="text-white text-2xl font-bold mb-6">
+              100 Days To BECE
+            </h2>
+            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-white text-lg font-semibold">
+                    Auto-Progress for Daily Readings
+                  </h3>
+                  <p className="text-gray-400">
+                    Enable automatic daily completion and ticking of boxes
+                  </p>
+                </div>
+                <button
+                  onClick={() =>
+                    updateDaysOfLearning({ isActive: !daysOfLearning.isActive })
+                  }
+                  className={`px-4 py-2 rounded-lg font-semibold ${
+                    daysOfLearning.isActive
+                      ? "bg-green-500 text-white"
+                      : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  }`}
+                >
+                  {daysOfLearning.isActive ? "Active" : "Inactive"}
+                </button>
+              </div>
+              <div className="space-y-2 text-gray-400">
+                <p>
+                  Completed Days: {daysOfLearning.completedDays} of{" "}
+                  {daysOfLearning.totalDays}
+                </p>
+                <p>
+                  Last Completed:{" "}
+                  {daysOfLearning.lastCompletedDate || "Not started"}
+                </p>
+                <p>Today's Status: {isTodayCompleted ? "Ticked" : "Pending"}</p>
+              </div>
+              <button
+                onClick={() => {
+                  if (isTodayCompleted) {
+                    alert("Already ticked for today!");
+                    return;
+                  }
+                  if (isChallengeCompleted) {
+                    alert("Challenge completed!");
+                    return;
+                  }
+                  updateDaysOfLearning({
+                    completedDays: daysOfLearning.completedDays + 1,
+                    lastCompletedDate: todayStr,
+                    activities: [
+                      ...daysOfLearning.activities,
+                      {
+                        day: daysOfLearning.completedDays + 1,
+                        content: "Manually ticked by admin",
+                        timestamp: new Date().toISOString(),
+                      },
+                    ],
+                  });
+                  alert("Day ticked successfully!");
+                }}
+                disabled={isTodayCompleted || isChallengeCompleted}
+                className={`mt-4 px-4 py-2 rounded-lg font-semibold ${
+                  isTodayCompleted || isChallengeCompleted
+                    ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                    : "bg-yellow-500 hover:bg-yellow-600 text-gray-900"
+                }`}
+              >
+                {isChallengeCompleted
+                  ? "Challenge Completed"
+                  : isTodayCompleted
+                  ? "Already Ticked Today"
+                  : "Manually Tick Next Day"}
+              </button>
+            </div>
+          </div>
+          {/* Social Connections Management */}
+          <div className="mt-8">
+            <h2 className="text-white text-2xl font-bold mb-6">
+              Social Connections
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <h3 className="text-white font-semibold mb-4">
+                  Pending Friend Requests
+                </h3>
+                {pendingRequests.length > 0 ? (
+                  pendingRequests.map((req) => {
+                    const fromUser = directory.find((u) => u.id === req.fromId);
+                    return (
+                      <div
+                        key={req.id}
+                        className="flex items-center justify-between p-3 bg-gray-700 rounded mb-3"
+                      >
+                        <div>
+                          <p className="text-white">
+                            {fromUser?.name || "Unknown"}
+                          </p>
+                          <p className="text-gray-400 text-sm">
+                            {fromUser?.email}
+                          </p>
+                        </div>
+                        <div className="space-x-2">
+                          <button
+                            onClick={() => acceptFriendRequest(req.id)}
+                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={() => rejectFriendRequest(req.id)}
+                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-gray-400">No pending friend requests.</p>
+                )}
+              </div>
+              <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <h3 className="text-white font-semibold mb-4">Friends</h3>
+                {friendsForAdmin.length > 0 ? (
+                  friendsForAdmin.map((friendId) => {
+                    const friend = directory.find((u) => u.id === friendId);
+                    return (
+                      <div
+                        key={friendId}
+                        className="flex items-center justify-between p-3 bg-gray-700 rounded mb-3"
+                      >
+                        <div>
+                          <p className="text-white">
+                            {friend?.name || "Unknown"}
+                          </p>
+                          <p className="text-gray-400 text-sm">
+                            {friend?.role}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedUser(friend);
+                            setIsChatOpen(true);
+                          }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
+                        >
+                          Chat
+                        </button>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-gray-400">No friends yet.</p>
+                )}
+              </div>
+            </div>
+          </div>
+          {/* Students Directory with Pictures and Signup Details */}
+          <div className="mt-8">
+            <h2 className="text-white text-2xl font-bold mb-6">
+              Students Directory
+            </h2>
+            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+              {students.length === 0 ? (
+                <p className="text-gray-400 text-center">No students found.</p>
+              ) : (
+                <div className="space-y-4">
+                  {students.map((student) => (
+                    <div
+                      key={student.id}
+                      className="flex items-start space-x-4 p-4 bg-gray-900 rounded-lg border border-gray-700"
+                    >
+                      <img
+                        src={
+                          student.pictureUrl ||
+                          "https://via.placeholder.com/48?text=👤"
+                        }
+                        alt={student.name}
+                        className="w-12 h-12 rounded-full object-cover flex-shrink-0 mt-1"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold truncate">
+                          {student.name}
+                        </h3>
+                        <p className="text-gray-400 text-sm">
+                          ID: {student.id}
+                        </p>
+                        <p className="text-gray-300 text-sm truncate">
+                          {student.email}
+                        </p>
+                        {student.cohort && (
+                          <p className="text-gray-500 text-xs">
+                            Cohort: {student.cohort}
+                          </p>
+                        )}
+                        {student.startDate && (
+                          <p className="text-gray-500 text-xs">
+                            Joined:{" "}
+                            {new Date(student.startDate).toLocaleDateString()}
+                          </p>
+                        )}
+                        {student.bio && (
+                          <p className="text-gray-500 text-xs truncate mt-1">
+                            Bio: {student.bio}
+                          </p>
+                        )}
+                        {student.location && (
+                          <p className="text-gray-500 text-xs">
+                            Location: {student.location}
+                          </p>
+                        )}
+                        {student.phone && (
+                          <p className="text-gray-500 text-xs">
+                            Phone: {student.phone}
+                          </p>
+                        )}
+                        {student.github && (
+                          <p className="text-gray-500 text-xs">
+                            GitHub:{" "}
+                            <a
+                              href={`https://github.com/${student.github}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:underline"
+                            >
+                              @{student.github}
+                            </a>
+                          </p>
+                        )}
+                        {student.linkedin && (
+                          <p className="text-gray-500 text-xs">
+                            LinkedIn:{" "}
+                            <a
+                              href={`https://linkedin.com/in/${student.linkedin}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:underline"
+                            >
+                              @{student.linkedin}
+                            </a>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          {/* New Team and Private Messaging Sections */}
+          <TeamMessaging />
+          <PrivateMessaging />
+          {isChatOpen && selectedUser && (
+            <ChatModal
+              onClose={() => setIsChatOpen(false)}
+              otherUser={selectedUser}
+              currentUser={adminUser}
+            />
+          )}
+        </div>
+        <NotificationModal
+          isOpen={isNotificationOpen}
+          onClose={() => setIsNotificationOpen(false)}
+          userId={userId}
+          directory={directory}
+          conversations={conversationsAdmin}
+          markNotificationAsRead={markNotificationAsRead}
+          onOpenChat={handleOpenChatFromNotification}
+          sessions={sessions}
+          programs={programs}
+        />
       </div>
-      <NotificationModal
-        isOpen={isNotificationOpen}
-        onClose={() => setIsNotificationOpen(false)}
-        userId={userId}
-        directory={directory}
-        conversations={conversationsAdmin}
-        markNotificationAsRead={markNotificationAsRead}
-        onOpenChat={handleOpenChatFromNotification}
-        sessions={sessions}
-        programs={programs}
-      />
     </div>
   );
 };
+
 export default Administrator;
