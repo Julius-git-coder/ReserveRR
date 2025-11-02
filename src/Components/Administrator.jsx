@@ -1159,6 +1159,7 @@ const Administrator = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [studentCount, setStudentCount] = useState(0);
   const [adminProfile, setAdminProfile] = useState(null);
   const markAsRead = useManageStore((state) => state.markAsRead);
@@ -2969,7 +2970,10 @@ const Administrator = () => {
               <option value="program">New Program</option>
               <option value="milestone">New Milestone</option>
             </select>
-            <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2">
+            <button 
+              onClick={() => setShowSettings(!showSettings)}
+              className={`${showSettings ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900' : 'bg-gray-800 hover:bg-gray-700 text-white'} px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2 font-semibold`}
+            >
               <Settings className="w-4 h-4" />
               <span>Settings</span>
             </button>
@@ -4616,7 +4620,7 @@ const Administrator = () => {
           {/* New Team and Private Messaging Sections */}
           <TeamMessaging />
           <PrivateMessaging />
-          <AdminSettings />
+          {showSettings && <AdminSettings />}
           {isChatOpen && selectedUser && (
             <ChatModal
               onClose={() => setIsChatOpen(false)}
