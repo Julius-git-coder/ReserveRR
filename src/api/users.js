@@ -6,8 +6,13 @@ export const usersAPI = {
     return response.data;
   },
 
-  getTeamMembers: async (teamId) => {
-    const response = await apiClient.get(`/users/admins/${teamId}/members`);
+  getTeamMembers: async () => {
+    const response = await apiClient.get('/users/team/members');
+    return response.data;
+  },
+
+  getAdminByTeamId: async (teamId) => {
+    const response = await apiClient.get(`/users/admins/team/${teamId}`);
     return response.data;
   },
 

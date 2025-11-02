@@ -24,10 +24,12 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       const [membersData, statsData] = await Promise.all([
-        usersAPI.getTeamMembers(currentUser.teamId),
+        usersAPI.getTeamMembers(), // No parameter needed - uses auth
         usersAPI.getAdminStats(),
       ]);
-      setTeamMembers(membersData);
+      // Filter out admin from members list for display (admin is included in response)
+      const students = (membersData || []).filter(m => (m._id || m.id) !== currentUser.id);
+      setTeamMembers(students);
       setStats(statsData);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -43,8 +45,8 @@ const AdminDashboard = () => {
     setSendingBroadcast(true);
     try {
       const messageData = {
-        receiverId: null,
-        teamId: currentUser.teamId,
+        receiverId: null, // null = broadcast to all team students
+        isTeamChat: false, // false = broadcast, true = team chat
         content: broadcastContent.trim(),
         fileUrl: null,
       };
@@ -206,7 +208,7 @@ const AdminDashboard = () => {
           onClose={() => setShowTeamChat(false)}
           currentUser={currentUser}
           isTeamChat={true}
-          teamId={currentUser.teamId}
+          adminId={currentUser.id} // Admin's ID is the adminId for the team
         />
       )}
 
@@ -215,7 +217,7 @@ const AdminDashboard = () => {
           onClose={() => setSelectedMember(null)}
           otherUser={selectedMember}
           currentUser={currentUser}
-          teamId={currentUser.teamId}
+          isTeamChat={false}
         />
       )}
     </div>

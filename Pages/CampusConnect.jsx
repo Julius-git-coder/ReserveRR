@@ -1,123 +1,140 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users,
   MessageSquare,
-  ThumbsUp,
-  Send,
-  Image,
-  Paperclip,
+  User,
+  Loader,
 } from "lucide-react";
-import useManageStore from "../src/Store/useManageStore";
-
+import { usersAPI } from "../src/api/users";
+import ChatWindow from "../src/Components/ChatWindow";
 
 const CampusConnect = () => {
-  const [newPost, setNewPost] = useState("");
-  const { posts, addPost } = useManageStore();
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [showTeamChat, setShowTeamChat] = useState(false);
+  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
 
-  const handlePostSubmit = () => {
-    if (newPost.trim()) {
-      addPost({
-        id: Date.now(),
-        author: "Current User", // Replace with actual user
-        timestamp: new Date().toISOString(),
-        content: newPost,
-        likes: 0,
-        comments: 0,
-      });
-      setNewPost("");
+  useEffect(() => {
+    loadTeamMembers();
+  }, []);
+
+  const loadTeamMembers = async () => {
+    try {
+      setLoading(true);
+      // getTeamMembers works for both admin and students
+      const members = await usersAPI.getTeamMembers();
+      setTeamMembers(members || []);
+    } catch (error) {
+      console.error("Error loading team members:", error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader className="w-8 h-8 text-yellow-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-white text-3xl font-bold">Campus Connect</h1>
         <p className="text-gray-400 mt-2">
-          Connect and collaborate with your peers
+          Connect and chat with your team members
         </p>
       </div>
 
+      {/* Team Chat Button */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <div className="flex items-start space-x-4">
-          <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-            <Users className="w-6 h-6 text-gray-400" />
-          </div>
-          <div className="flex-1">
-            <textarea
-              value={newPost}
-              onChange={(e) => setNewPost(e.target.value)}
-              placeholder="Share something with your classmates..."
-              className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-3 outline-none focus:border-yellow-500 resize-none"
-              rows="3"
-            />
-            <div className="flex items-center justify-between mt-3">
-              <div className="flex items-center space-x-2">
-                <button className="text-gray-400 hover:text-yellow-500 transition-colors p-2">
-                  <Image className="w-5 h-5" />
-                </button>
-                <button className="text-gray-400 hover:text-yellow-500 transition-colors p-2">
-                  <Paperclip className="w-5 h-5" />
-                </button>
-              </div>
-              <button
-                onClick={handlePostSubmit}
-                className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-6 py-2 rounded-lg font-semibold transition-colors flex items-center space-x-2"
-              >
-                <Send className="w-4 h-4" />
-                <span>Post</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <button
+          onClick={() => setShowTeamChat(true)}
+          className="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-6 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
+        >
+          <MessageSquare className="w-5 h-5" />
+          <span>Open Team Chat Room</span>
+        </button>
       </div>
 
-      <div className="space-y-4">
-        {posts.map((post) => (
-          <div
-            key={post.id}
-            className="bg-gray-800 rounded-lg p-6 border border-gray-700"
-          >
-            <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-                <Users className="w-6 h-6 text-gray-400" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <h3 className="text-white font-semibold">
-                        {post.author}
-                      </h3>
-                      {post.role && (
-                        <span className="bg-yellow-500 text-gray-900 px-2 py-0.5 rounded-full text-xs font-semibold">
-                          {post.role}
-                        </span>
+      {/* Team Members List */}
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 className="text-white text-xl font-semibold mb-4 flex items-center space-x-2">
+          <Users className="w-5 h-5 text-yellow-500" />
+          <span>Team Members ({teamMembers.length})</span>
+        </h2>
+        {teamMembers.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-400">No team members found.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {teamMembers.map((member) => {
+              // Skip self in the list if not admin viewing
+              if (member._id === currentUser.id || member.id === currentUser.id) {
+                return null;
+              }
+              return (
+                <div
+                  key={member._id || member.id}
+                  className="bg-gray-700 rounded-lg p-4 border border-gray-600 hover:border-yellow-500 transition-colors cursor-pointer"
+                  onClick={() => setSelectedMember(member)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden bg-gray-600">
+                      {member.profileImage ? (
+                        <img
+                          src={member.profileImage}
+                          alt={member.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-6 h-6 text-gray-300" />
                       )}
                     </div>
-                    <p className="text-gray-400 text-sm">{post.timestamp}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold truncate">
+                        {member.name}
+                        {member.role === "admin" && (
+                          <span className="ml-2 bg-yellow-500 text-gray-900 px-2 py-0.5 rounded text-xs">
+                            Admin
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-gray-400 text-sm truncate">
+                        {member.email}
+                      </p>
+                    </div>
+                    <MessageSquare className="w-5 h-5 text-gray-400" />
                   </div>
                 </div>
-                <p className="text-gray-300 mb-4">{post.content}</p>
-                <div className="flex items-center space-x-6 text-sm">
-                  <button className="flex items-center space-x-2 text-gray-400 hover:text-yellow-500 transition-colors">
-                    <ThumbsUp className="w-4 h-4" />
-                    <span>{post.likes} likes</span>
-                  </button>
-                  <button className="flex items-center space-x-2 text-gray-400 hover:text-yellow-500 transition-colors">
-                    <MessageSquare className="w-4 h-4" />
-                    <span>{post.comments} comments</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-        {posts.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-400">No posts available.</p>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Chat Windows */}
+      {showTeamChat && (
+        <ChatWindow
+          onClose={() => setShowTeamChat(false)}
+          currentUser={currentUser}
+          isTeamChat={true}
+          adminId={currentUser.adminId || currentUser.id}
+        />
+      )}
+
+      {selectedMember && (
+        <ChatWindow
+          onClose={() => setSelectedMember(null)}
+          otherUser={selectedMember}
+          currentUser={currentUser}
+          isTeamChat={false}
+        />
+      )}
     </div>
   );
 };

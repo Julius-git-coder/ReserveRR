@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Paperclip, Image as ImageIcon } from 'lucide-react';
+import { X, Send, Paperclip } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { messagesAPI } from '../api/messages';
 import { uploadsAPI } from '../api/uploads';
 import { User } from 'lucide-react';
 
-const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, teamId }) => {
+const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, adminId }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -15,6 +15,9 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, teamI
   const fileInputRef = useRef(null);
   const { socket, isConnected } = useSocket();
 
+  // Determine adminId
+  const teamAdminId = adminId || currentUser.adminId || currentUser.id;
+
   // Load messages on mount
   useEffect(() => {
     const loadMessages = async () => {
@@ -22,9 +25,9 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, teamI
         setIsLoading(true);
         let data;
         if (isTeamChat) {
-          data = await messagesAPI.getTeamMessages(teamId);
+          data = await messagesAPI.getTeamChatMessages();
         } else {
-          data = await messagesAPI.getDirectMessages(otherUser.id);
+          data = await messagesAPI.getDirectMessages(otherUser._id || otherUser.id);
         }
         setMessages(data || []);
       } catch (error) {
@@ -34,10 +37,10 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, teamI
       }
     };
 
-    if ((otherUser || isTeamChat) && teamId) {
+    if (isTeamChat || otherUser) {
       loadMessages();
     }
-  }, [otherUser, isTeamChat, teamId]);
+  }, [otherUser, isTeamChat]);
 
   // Listen for new messages via Socket.io
   useEffect(() => {
@@ -46,18 +49,22 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, teamI
     const handleNewMessage = (message) => {
       // Check if message is relevant to this chat
       if (isTeamChat) {
-        // For team chat, accept all team messages
-        if (message.teamId === teamId) {
+        // For team chat, accept all team chat messages (isTeamChat: true)
+        if (message.isTeamChat && message.adminId === teamAdminId) {
           setMessages((prev) => [...prev, message]);
         }
       } else {
         // For direct chat, only accept messages between these two users
-        const isFromOther = message.senderId._id === otherUser.id;
-        const isFromMe = message.senderId._id === currentUser.id;
-        const isToMe = message.receiverId && message.receiverId._id === currentUser.id;
-        const isToOther = message.receiverId && message.receiverId._id === otherUser.id;
+        const otherUserId = otherUser._id || otherUser.id;
+        const currentUserId = currentUser.id;
+        
+        const isFromOther = message.senderId?._id === otherUserId || message.senderId?._id?.toString() === otherUserId;
+        const isFromMe = message.senderId?._id === currentUserId || message.senderId?._id?.toString() === currentUserId;
+        const isToMe = message.receiverId && (message.receiverId._id === currentUserId || message.receiverId._id?.toString() === currentUserId);
+        const isToOther = message.receiverId && (message.receiverId._id === otherUserId || message.receiverId._id?.toString() === otherUserId);
 
-        if ((isFromOther && isToMe) || (isFromMe && isToOther)) {
+        // Direct message should not be team chat
+        if (!message.isTeamChat && ((isFromOther && isToMe) || (isFromMe && isToOther))) {
           setMessages((prev) => [...prev, message]);
         }
       }
@@ -68,7 +75,7 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, teamI
     return () => {
       socket.off('new_message', handleNewMessage);
     };
-  }, [socket, isConnected, otherUser, currentUser, isTeamChat, teamId]);
+  }, [socket, isConnected, otherUser, currentUser, isTeamChat, teamAdminId]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -82,8 +89,8 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, teamI
     setIsSending(true);
     try {
       const messageData = {
-        receiverId: isTeamChat ? null : otherUser.id,
-        teamId: teamId || currentUser.teamId,
+        receiverId: isTeamChat ? null : (otherUser._id || otherUser.id),
+        isTeamChat: isTeamChat,
         content: newMessage.trim() || null,
         fileUrl: null,
       };
@@ -106,8 +113,8 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, teamI
       const { url } = await uploadsAPI.uploadFile(file);
       
       const messageData = {
-        receiverId: isTeamChat ? null : otherUser.id,
-        teamId: teamId || currentUser.teamId,
+        receiverId: isTeamChat ? null : (otherUser._id || otherUser.id),
+        isTeamChat: isTeamChat,
         content: null,
         fileUrl: url,
       };
@@ -130,8 +137,16 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, teamI
 
   const getSenderName = (senderId) => {
     if (!senderId) return 'Unknown';
-    if (senderId._id === currentUser.id) return 'You';
+    const senderIdValue = senderId._id || senderId.id || senderId;
+    const currentUserId = currentUser.id;
+    
+    if (senderIdValue === currentUserId || senderIdValue?.toString() === currentUserId) return 'You';
     return senderId.name || 'Unknown';
+  };
+
+  const getSenderIdValue = (senderId) => {
+    if (!senderId) return null;
+    return senderId._id || senderId.id || senderId;
   };
 
   return (
@@ -153,7 +168,7 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, teamI
             </div>
             <div>
               <h3 className="text-white font-semibold">
-                {isTeamChat ? `Team Chat - ${teamId}` : otherUser?.name || 'User'}
+                {isTeamChat ? `Team Chat Room` : otherUser?.name || 'User'}
               </h3>
               <p className="text-gray-400 text-sm">
                 {isConnected ? 'Online' : 'Connecting...'}
@@ -176,19 +191,17 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, teamI
             <div className="text-center text-gray-400 py-8">No messages yet. Start the conversation!</div>
           ) : (
             messages.map((msg) => {
-              const isMyMessage = msg.senderId._id === currentUser.id;
+              const senderIdValue = getSenderIdValue(msg.senderId);
+              const currentUserId = currentUser.id;
+              const isMyMessage = senderIdValue === currentUserId || senderIdValue?.toString() === currentUserId;
+              
               return (
                 <div
                   key={msg._id}
                   className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
                 >
                   <div className="max-w-xs lg:max-w-md">
-                    {!isMyMessage && !isTeamChat && (
-                      <p className="text-gray-400 text-xs mb-1">
-                        {getSenderName(msg.senderId)}
-                      </p>
-                    )}
-                    {isTeamChat && (
+                    {!isMyMessage && (
                       <p className="text-gray-400 text-xs mb-1">
                         {getSenderName(msg.senderId)}
                       </p>
@@ -285,4 +298,3 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, teamI
 };
 
 export default ChatWindow;
-

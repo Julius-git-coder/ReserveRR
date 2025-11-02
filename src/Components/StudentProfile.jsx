@@ -171,7 +171,7 @@ const StudentProfile = () => {
           onClose={() => setShowAdminChat(false)}
           currentUser={currentUser}
           isTeamChat={true}
-          teamId={userData?.teamId}
+          adminId={userData?.adminId || currentUser.adminId}
         />
       )}
     </div>
