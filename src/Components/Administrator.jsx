@@ -2032,12 +2032,24 @@ const Administrator = () => {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith("image/")) {
       alert("Please select a valid image file.");
+      e.target.value = "";
+      return;
+    }
+
+    // Check file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File size exceeds 10MB limit. Please choose a smaller image.");
+      e.target.value = "";
       return;
     }
 
     try {
       // Upload file to backend (which handles Cloudinary)
       const { url } = await uploadsAPI.uploadFile(file);
+      
+      if (!url) {
+        throw new Error("Upload succeeded but no URL returned");
+      }
       
       // Update user profile with the image URL
       const updatedUser = await usersAPI.updateProfile({ profileImage: url });
@@ -2065,10 +2077,39 @@ const Administrator = () => {
       alert("Profile picture updated successfully!");
     } catch (error) {
       console.error("Error uploading profile image:", error);
-      alert(error.response?.data?.message || "Failed to upload image. Please try again.");
+      
+      // Provide user-friendly error messages
+      let errorMessage = "Failed to upload image. Please try again.";
+      
+      if (error.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+        
+        if (status === 500) {
+          if (data?.message?.includes("Cloudinary") || data?.message?.includes("not configured")) {
+            errorMessage = "File upload service is not configured. Please contact your system administrator to set up Cloudinary. Profile picture upload is temporarily unavailable.";
+          } else if (data?.message?.includes("team ID")) {
+            errorMessage = "Your account is missing a Team ID. Please contact support to fix this issue.";
+          } else {
+            errorMessage = data?.message || "Server error occurred. Please check your backend configuration.";
+          }
+        } else if (status === 400) {
+          errorMessage = data?.message || "Invalid file or request. Please try again.";
+        } else if (status === 403) {
+          errorMessage = data?.message || "You don't have permission to upload files.";
+        } else if (status === 401) {
+          errorMessage = "Your session has expired. Please log out and log back in.";
+        } else {
+          errorMessage = data?.message || errorMessage;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
+    } finally {
+      e.target.value = "";
     }
-    
-    e.target.value = "";
   };
   const handleEditEvent = (event) => {
     setFormData({
