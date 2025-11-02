@@ -1191,6 +1191,8 @@ const Administrator = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [studentCount, setStudentCount] = useState(0);
   const [adminProfile, setAdminProfile] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [studentsLoading, setStudentsLoading] = useState(true);
   const markAsRead = useManageStore((state) => state.markAsRead);
   const { directory, conversations } = useManageStore();
   const userId = 2;
@@ -1198,11 +1200,48 @@ const Administrator = () => {
     (state) => state.markNotificationAsRead
   );
   const updateUser = useManageStore((state) => state.updateUser);
-  // Removed Firebase UID fetch, use static count from directory
-  useEffect(() => {
-    const count = directory.filter((u) => u.role === "Student").length;
-    setStudentCount(count);
+  // Load students from API with real-time updates
+  const loadStudents = useCallback(async () => {
+    try {
+      setStudentsLoading(true);
+      const teamMembers = await usersAPI.getTeamMembers();
+      const studentList = (teamMembers || []).filter(
+        (m) => m.role === "student"
+      );
+      setStudents(studentList);
+      setStudentCount(studentList.length);
+    } catch (error) {
+      console.error("Error loading students:", error);
+      // Fallback to directory
+      const directoryStudents = directory.filter((u) => u.role === "Student");
+      setStudents(directoryStudents);
+      setStudentCount(directoryStudents.length);
+    } finally {
+      setStudentsLoading(false);
+    }
   }, [directory]);
+
+  // Load students on mount and when directory changes
+  useEffect(() => {
+    loadStudents();
+  }, [loadStudents]);
+
+  // Listen for real-time student updates
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleTeamMemberUpdate = () => {
+      // Reload students when team members are added/removed
+      loadStudents();
+    };
+
+    socket.on('team_member_updated', handleTeamMemberUpdate);
+
+    return () => {
+      socket.off('team_member_updated', handleTeamMemberUpdate);
+    };
+  }, [socket, isConnected, loadStudents]);
+
   const { socket, isConnected } = useSocket();
 
   // Load admin profile from API on mount
@@ -1555,17 +1594,39 @@ const Administrator = () => {
           return;
         }
         const now = new Date();
-        const newAnnouncement = {
-          id: newId(announcements),
-          title: formData.title,
-          content: formData.content,
-          date: now.toISOString().split("T")[0],
-          time: now.toTimeString().split(" ")[0].slice(0, 5),
-          priority: formData.priority || "medium",
-          author: formData.author || "Admin Team",
-        };
-        addAnnouncement(newAnnouncement);
-        alert("Announcement added successfully!");
+        const isGeneral = formData.recipientType === "general" || !formData.studentId;
+        
+        if (isGeneral) {
+          // Create announcement for all students
+          const newAnnouncement = {
+            id: newId(announcements),
+            title: formData.title,
+            content: formData.content,
+            date: now.toISOString().split("T")[0],
+            time: now.toTimeString().split(" ")[0].slice(0, 5),
+            priority: formData.priority || "medium",
+            author: formData.author || "Admin Team",
+            recipientType: "general",
+          };
+          addAnnouncement(newAnnouncement);
+          alert(`Announcement sent to all ${students.length} students successfully!`);
+        } else {
+          // Create announcement for specific student
+          const newAnnouncement = {
+            id: newId(announcements),
+            title: formData.title,
+            content: formData.content,
+            date: now.toISOString().split("T")[0],
+            time: now.toTimeString().split(" ")[0].slice(0, 5),
+            priority: formData.priority || "medium",
+            author: formData.author || "Admin Team",
+            studentId: parseInt(formData.studentId),
+            recipientType: "specific",
+          };
+          addAnnouncement(newAnnouncement);
+          const student = students.find(s => (s.id || s._id) === formData.studentId);
+          alert(`Announcement sent to ${student?.name || 'student'} successfully!`);
+        }
         break;
       }
       case "announcement-edit": {
@@ -1613,7 +1674,7 @@ const Administrator = () => {
           !formData.title ||
           !formData.dueDate ||
           !formData.points ||
-          !formData.studentId
+          (!formData.studentId && formData.recipientType !== "general")
         ) {
           alert("Please fill in all required fields.");
           return;
@@ -1624,19 +1685,43 @@ const Administrator = () => {
           return;
         }
         const now = new Date();
-        const newAssignment = {
-          id: newId(assignments),
-          title: formData.title,
-          description: formData.description || "",
-          dueDate: formData.dueDate,
-          points,
-          studentId: parseInt(formData.studentId),
-          status: "pending",
-          createdDate: now.toISOString().split("T")[0],
-          createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
-        };
-        addAssignment(newAssignment);
-        alert("Assignment added successfully! Student will see it now.");
+        const isGeneral = formData.recipientType === "general" || !formData.studentId;
+        
+        if (isGeneral) {
+          // Create assignment for all students
+          let currentId = newId(assignments);
+          students.forEach((student) => {
+            const newAssignment = {
+              id: currentId++,
+              title: formData.title,
+              description: formData.description || "",
+              dueDate: formData.dueDate,
+              points,
+              studentId: parseInt(student.id || student._id),
+              status: "pending",
+              createdDate: now.toISOString().split("T")[0],
+              createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
+            };
+            addAssignment(newAssignment);
+          });
+          alert(`Assignment created for all ${students.length} students successfully!`);
+        } else {
+          // Create assignment for specific student
+          const newAssignment = {
+            id: newId(assignments),
+            title: formData.title,
+            description: formData.description || "",
+            dueDate: formData.dueDate,
+            points,
+            studentId: parseInt(formData.studentId),
+            status: "pending",
+            createdDate: now.toISOString().split("T")[0],
+            createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
+          };
+          addAssignment(newAssignment);
+          const student = students.find(s => (s.id || s._id) === formData.studentId);
+          alert(`Assignment created for ${student?.name || 'student'} successfully!`);
+        }
         break;
       }
       case "assignment-edit": {
@@ -1669,7 +1754,7 @@ const Administrator = () => {
           !formData.title ||
           !formData.dueDate ||
           !formData.points ||
-          !formData.studentId
+          (!formData.studentId && formData.recipientType !== "general")
         ) {
           alert("Please fill in all required fields.");
           return;
@@ -1680,19 +1765,43 @@ const Administrator = () => {
           return;
         }
         const now = new Date();
-        const newExercise = {
-          id: newId(exercises),
-          title: formData.title,
-          description: formData.description || "",
-          dueDate: formData.dueDate,
-          points,
-          studentId: parseInt(formData.studentId),
-          status: "pending",
-          createdDate: now.toISOString().split("T")[0],
-          createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
-        };
-        addExercise(newExercise);
-        alert("Exercise added successfully! Student will see it now.");
+        const isGeneral = formData.recipientType === "general" || !formData.studentId;
+        
+        if (isGeneral) {
+          // Create exercise for all students
+          let currentId = newId(exercises);
+          students.forEach((student) => {
+            const newExercise = {
+              id: currentId++,
+              title: formData.title,
+              description: formData.description || "",
+              dueDate: formData.dueDate,
+              points,
+              studentId: parseInt(student.id || student._id),
+              status: "pending",
+              createdDate: now.toISOString().split("T")[0],
+              createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
+            };
+            addExercise(newExercise);
+          });
+          alert(`Exercise created for all ${students.length} students successfully!`);
+        } else {
+          // Create exercise for specific student
+          const newExercise = {
+            id: newId(exercises),
+            title: formData.title,
+            description: formData.description || "",
+            dueDate: formData.dueDate,
+            points,
+            studentId: parseInt(formData.studentId),
+            status: "pending",
+            createdDate: now.toISOString().split("T")[0],
+            createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
+          };
+          addExercise(newExercise);
+          const student = students.find(s => (s.id || s._id) === formData.studentId);
+          alert(`Exercise created for ${student?.name || 'student'} successfully!`);
+        }
         break;
       }
       case "exercise-edit": {
@@ -1725,7 +1834,7 @@ const Administrator = () => {
           !formData.title ||
           !formData.dueDate ||
           !formData.points ||
-          !formData.studentId
+          (!formData.studentId && formData.recipientType !== "general")
         ) {
           alert("Please fill in all required fields.");
           return;
@@ -1736,19 +1845,43 @@ const Administrator = () => {
           return;
         }
         const now = new Date();
-        const newProject = {
-          id: newId(projects),
-          title: formData.title,
-          description: formData.description || "",
-          dueDate: formData.dueDate,
-          points,
-          studentId: parseInt(formData.studentId),
-          status: "pending",
-          createdDate: now.toISOString().split("T")[0],
-          createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
-        };
-        addProject(newProject);
-        alert("Project added successfully! Student will see it now.");
+        const isGeneral = formData.recipientType === "general" || !formData.studentId;
+        
+        if (isGeneral) {
+          // Create project for all students
+          let currentId = newId(projects);
+          students.forEach((student) => {
+            const newProject = {
+              id: currentId++,
+              title: formData.title,
+              description: formData.description || "",
+              dueDate: formData.dueDate,
+              points,
+              studentId: parseInt(student.id || student._id),
+              status: "pending",
+              createdDate: now.toISOString().split("T")[0],
+              createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
+            };
+            addProject(newProject);
+          });
+          alert(`Project created for all ${students.length} students successfully!`);
+        } else {
+          // Create project for specific student
+          const newProject = {
+            id: newId(projects),
+            title: formData.title,
+            description: formData.description || "",
+            dueDate: formData.dueDate,
+            points,
+            studentId: parseInt(formData.studentId),
+            status: "pending",
+            createdDate: now.toISOString().split("T")[0],
+            createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
+          };
+          addProject(newProject);
+          const student = students.find(s => (s.id || s._id) === formData.studentId);
+          alert(`Project created for ${student?.name || 'student'} successfully!`);
+        }
         break;
       }
       case "project-edit": {
@@ -1781,20 +1914,40 @@ const Administrator = () => {
           !formData.date ||
           !formData.status ||
           !formData.topic ||
-          !formData.studentId
+          (!formData.studentId && formData.recipientType !== "general")
         ) {
           alert("Please fill in all required fields.");
           return;
         }
-        const newAttendance = {
-          id: newId(attendance),
-          date: formData.date,
-          status: formData.status,
-          topic: formData.topic,
-          studentId: parseInt(formData.studentId),
-        };
-        addAttendance(newAttendance);
-        alert("Attendance record added successfully! Student will see it now.");
+        const isGeneral = formData.recipientType === "general" || !formData.studentId;
+        
+        if (isGeneral) {
+          // Create attendance record for all students
+          let currentId = newId(attendance);
+          students.forEach((student) => {
+            const newAttendance = {
+              id: currentId++,
+              date: formData.date,
+              status: formData.status,
+              topic: formData.topic,
+              studentId: parseInt(student.id || student._id),
+            };
+            addAttendance(newAttendance);
+          });
+          alert(`Attendance record created for all ${students.length} students successfully!`);
+        } else {
+          // Create attendance record for specific student
+          const newAttendance = {
+            id: newId(attendance),
+            date: formData.date,
+            status: formData.status,
+            topic: formData.topic,
+            studentId: parseInt(formData.studentId),
+          };
+          addAttendance(newAttendance);
+          const student = students.find(s => (s.id || s._id) === formData.studentId);
+          alert(`Attendance record created for ${student?.name || 'student'} successfully!`);
+        }
         break;
       }
       case "attendance-edit": {
@@ -2130,6 +2283,60 @@ const Administrator = () => {
     });
     setSelectedForm("announcement-edit");
   };
+  // Student Selection Component - Reusable dropdown with General option
+  const renderStudentSelection = (isRequired = true, showLabel = true) => {
+    const isGeneral = formData.recipientType === "general" || (!formData.studentId && !formData.recipientType);
+    const selectedValue = isGeneral ? "general" : (formData.studentId || formData.recipientType || "general");
+    
+    return (
+      <div className="space-y-2">
+        {showLabel && (
+          <label className="block text-gray-400 text-sm mb-2">
+            Select Recipient {isRequired && "*"}
+          </label>
+        )}
+        <select
+          value={selectedValue}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === "general") {
+              handleFormChange("recipientType", "general");
+              handleFormChange("studentId", ""); // Clear specific student
+            } else {
+              handleFormChange("recipientType", "specific");
+              handleFormChange("studentId", value);
+            }
+          }}
+          className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none focus:border-yellow-500"
+          required={isRequired}
+        >
+          <option value="general">
+            General - All Students ({students.length} students)
+          </option>
+          {studentsLoading ? (
+            <option disabled>Loading students...</option>
+          ) : students.length === 0 ? (
+            <option disabled>No students available</option>
+          ) : (
+            students.map((student) => (
+              <option 
+                key={student.id || student._id} 
+                value={student.id || student._id}
+              >
+                {student.name} (ID: {student.studentId || student.id || student._id})
+              </option>
+            ))
+          )}
+        </select>
+        {isGeneral && students.length > 0 && (
+          <p className="text-gray-500 text-xs">
+            This content will be sent to all {students.length} students in your team
+          </p>
+        )}
+      </div>
+    );
+  };
+
   const getFormTitle = (formType, hasId) => {
     const titles = {
       announcement: "New Announcement",
@@ -2161,6 +2368,7 @@ const Administrator = () => {
       case "announcement-edit":
         return (
           <div className="space-y-4">
+            {renderStudentSelection(true)}
             <div>
               <label className="block text-gray-400 text-sm mb-2">
                 Title *
@@ -2263,24 +2471,7 @@ const Administrator = () => {
                 required
               />
             </div>
-            <div>
-              <label className="block text-gray-400 text-sm mb-2">
-                Student ID * (Select from dropdown)
-              </label>
-              <select
-                value={formData.studentId || ""}
-                onChange={(e) => handleFormChange("studentId", e.target.value)}
-                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-                required
-              >
-                <option value="">Select Student</option>
-                {students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.name} (ID: {student.id})
-                  </option>
-                ))}
-              </select>
-            </div>
+            {renderStudentSelection(true)}
           </div>
         );
       case "exercise":
@@ -2336,24 +2527,7 @@ const Administrator = () => {
                 required
               />
             </div>
-            <div>
-              <label className="block text-gray-400 text-sm mb-2">
-                Student ID * (Select from dropdown)
-              </label>
-              <select
-                value={formData.studentId || ""}
-                onChange={(e) => handleFormChange("studentId", e.target.value)}
-                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-                required
-              >
-                <option value="">Select Student</option>
-                {students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.name} (ID: {student.id})
-                  </option>
-                ))}
-              </select>
-            </div>
+            {renderStudentSelection(true)}
           </div>
         );
       case "project":
@@ -2409,24 +2583,7 @@ const Administrator = () => {
                 required
               />
             </div>
-            <div>
-              <label className="block text-gray-400 text-sm mb-2">
-                Student ID * (Select from dropdown)
-              </label>
-              <select
-                value={formData.studentId || ""}
-                onChange={(e) => handleFormChange("studentId", e.target.value)}
-                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-                required
-              >
-                <option value="">Select Student</option>
-                {students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.name} (ID: {student.id})
-                  </option>
-                ))}
-              </select>
-            </div>
+            {renderStudentSelection(true)}
           </div>
         );
       case "event":
@@ -2507,24 +2664,7 @@ const Administrator = () => {
                 <option value="absent">Absent</option>
               </select>
             </div>
-            <div>
-              <label className="block text-gray-400 text-sm mb-2">
-                Student ID * (Select from dropdown)
-              </label>
-              <select
-                value={formData.studentId || ""}
-                onChange={(e) => handleFormChange("studentId", e.target.value)}
-                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none"
-                required
-              >
-                <option value="">Select Student</option>
-                {students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.name} (ID: {student.id})
-                  </option>
-                ))}
-              </select>
-            </div>
+            {renderStudentSelection(true)}
           </div>
         );
       case "roadmap":
@@ -3081,7 +3221,7 @@ const Administrator = () => {
               value={selectedForm}
               onChange={(e) => {
                 setSelectedForm(e.target.value);
-                setFormData({});
+                setFormData({ recipientType: "general" }); // Default to General for new forms
               }}
               className="bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700"
             >
