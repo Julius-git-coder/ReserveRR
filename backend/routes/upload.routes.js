@@ -19,7 +19,12 @@ const handleMulterError = (err, req, res, next) => {
   next();
 };
 
-router.post('/', auth, uploadMiddleware, handleMulterError, uploadFile);
+// Async error wrapper
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+router.post('/', auth, uploadMiddleware, handleMulterError, asyncHandler(uploadFile));
 
 export default router;
 
