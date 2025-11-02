@@ -747,7 +747,7 @@ const WelcomeSection = ({
   );
 };
 // Recent Updates Component - Dynamic summary from all pages
-const RecentUpdates = ({ setActiveTab }) => {
+const RecentUpdates = ({ setActiveTab, currentUserId }) => {
   const {
     announcements,
     assignments,
@@ -758,7 +758,7 @@ const RecentUpdates = ({ setActiveTab }) => {
     daysOfLearning,
     roadmapItems,
   } = useManageStore();
-  const studentId = 1; // Fixed to number
+  const studentId = currentUserId;
   // Recent Announcements (last 2)
   const recentAnnouncements = announcements.slice(0, 2);
   // Pending/Submitted Assignments, Exercises, Projects (last 3 combined)
@@ -922,7 +922,7 @@ const RecentUpdates = ({ setActiveTab }) => {
   );
 };
 // Performance Hub Component - Now fully dynamic from store
-const PerformanceHub = ({ setActiveTab }) => {
+const PerformanceHub = ({ setActiveTab, currentUserId }) => {
   const {
     attendance,
     assignments,
@@ -930,7 +930,7 @@ const PerformanceHub = ({ setActiveTab }) => {
     projects,
     programs, // For soft skills
   } = useManageStore();
-  const studentId = 1; // Fixed to number
+  const studentId = currentUserId;
   // Attendance: Assume 1 point per present session, total based on total attendance records added by admin
   const studentAttendance = attendance.filter((a) => a.studentId === studentId);
   const presentAttendance = studentAttendance.filter(
@@ -1042,15 +1042,9 @@ const PerformanceHub = ({ setActiveTab }) => {
     </div>
   );
 };
-// Dashboard Content Component - Now uses directory for student profile
-const DashboardContent = ({ setActiveTab }) => {
-  const { directory } = useManageStore();
+// Dashboard Content Component - Now uses real user data
+const DashboardContent = ({ setActiveTab, studentProfile, currentUserId }) => {
   const { roadmapItems } = useManageStore();
-  const studentId = 1; // Fixed to number
-  const studentProfile = useMemo(
-    () => directory.find((u) => u.id === studentId),
-    [directory]
-  );
   // Find current and next week data from roadmap - Fixed to filter !passed
   let currentWeekData = null;
   let nextWeekData = null;
@@ -1086,24 +1080,28 @@ const DashboardContent = ({ setActiveTab }) => {
         nextWeekData={nextWeekData}
         setActiveTab={setActiveTab}
       />
-      <PerformanceHub setActiveTab={setActiveTab} />
-      <RecentUpdates setActiveTab={setActiveTab} />
+      <PerformanceHub setActiveTab={setActiveTab} currentUserId={currentUserId} />
+      <RecentUpdates setActiveTab={setActiveTab} currentUserId={currentUserId} />
     </div>
   );
 };
-// Protected Dashboard Component - Removed Firebase message listening, local only; use directory for profile pic
+// Protected Dashboard Component - Uses real user data from localStorage/API
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [directory, setDirectory] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
   const markAsRead = useManageStore((state) => state.markAsRead);
   const markNotificationAsRead = useManageStore(
     (state) => state.markNotificationAsRead
   );
   const {
-    directory,
     conversations,
     sessions,
     announcements,
@@ -1116,14 +1114,60 @@ const Dashboard = () => {
     programs,
     addNotification,
     addMessage,
+    setDirectory: setStoreDirectory,
   } = useManageStore();
-  const studentId = 1; // Fixed to number
-  const currentUser = { id: 1, name: "Julius Dagana" };
-  const adminId = 2; // Fixed to number
-  const studentProfile = useMemo(
-    () => directory.find((u) => u.id === studentId),
-    [directory]
-  );
+
+  // Load user data and directory
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        setCurrentUser({
+          id: userData.id || userData._id,
+          _id: userData.id || userData._id,
+          name: userData.name,
+        });
+
+        // Load team members from API
+        const { usersAPI } = await import('./api/users');
+        const teamMembers = await usersAPI.getTeamMembers();
+        const formattedDirectory = (teamMembers || []).map(member => ({
+          id: member._id || member.id,
+          _id: member._id || member.id,
+          name: member.name,
+          email: member.email,
+          role: member.role === 'admin' ? 'Administrator' : 'Student',
+          profileImage: member.profileImage,
+          studentId: member.studentId,
+        }));
+        setDirectory(formattedDirectory);
+        setStoreDirectory(formattedDirectory);
+
+        // Find current user's profile
+        const profile = formattedDirectory.find(
+          (u) => (u.id || u._id) === (userData.id || userData._id)
+        );
+        setStudentProfile(profile || userData);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [setStoreDirectory]);
+
+  if (loading || !currentUser) {
+    return (
+      <div className="flex h-screen bg-gray-900 items-center justify-center">
+        <div className="w-8 h-8 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const studentId = currentUser.id || currentUser._id;
   // Removed Firebase UID and profile fetch
   // Removed message listening useEffect
   const handleBellClick = () => {
@@ -1136,7 +1180,7 @@ const Dashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <DashboardContent setActiveTab={setActiveTab} />;
+        return <DashboardContent setActiveTab={setActiveTab} studentProfile={studentProfile} currentUserId={studentId} />;
       case "connect":
         return <CampusConnect />;
       case "announcements":

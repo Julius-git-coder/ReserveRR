@@ -24,6 +24,8 @@ import {
 import useManageStore from "../Store/useManageStore";
 import { usersAPI } from "../api/users";
 import { uploadsAPI } from "../api/uploads";
+import { useSocket } from "../context/SocketContext";
+import { messagesAPI } from "../api/messages";
 
 // Updated Sessions Management Section Component
 const SessionsManagement = ({
@@ -309,22 +311,163 @@ const TeamMessaging = () => {
     </div>
   );
 };
-// Fixed Private Messaging Section - Now uses API to get real students with studentId
+// Admin Settings Component - Delete and Suspend Students
+const AdminSettings = () => {
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState({});
+
+  useEffect(() => {
+    const loadStudents = async () => {
+      try {
+        setLoading(true);
+        const teamMembers = await usersAPI.getTeamMembers();
+        const studentList = (teamMembers || []).filter(
+          (m) => m.role === "student"
+        );
+        setStudents(studentList);
+      } catch (error) {
+        console.error("Error loading students:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStudents();
+  }, []);
+
+  const handleDeleteStudent = async (studentId) => {
+    if (!confirm("Are you sure you want to delete this student? This action cannot be undone.")) {
+      return;
+    }
+
+    setActionLoading((prev) => ({ ...prev, [studentId]: 'delete' }));
+    try {
+      await usersAPI.deleteStudent(studentId);
+      // Remove student from list
+      setStudents(students.filter(s => (s.id || s._id) !== studentId));
+      alert("Student deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting student:", error);
+      alert(error.response?.data?.message || "Failed to delete student");
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [studentId]: null }));
+    }
+  };
+
+  const handleSuspendStudent = async (studentId, currentStatus) => {
+    const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
+    const action = newStatus === 'suspended' ? 'suspend' : 'activate';
+    
+    if (!confirm(`Are you sure you want to ${action} this student?`)) {
+      return;
+    }
+
+    setActionLoading((prev) => ({ ...prev, [studentId]: 'suspend' }));
+    try {
+      const response = await usersAPI.updateStudentStatus(studentId, newStatus);
+      // Update student in list
+      setStudents(students.map(s => 
+        (s.id || s._id) === studentId 
+          ? { ...s, status: newStatus }
+          : s
+      ));
+      alert(response.message || `Student ${action}d successfully!`);
+    } catch (error) {
+      console.error("Error updating student status:", error);
+      alert(error.response?.data?.message || `Failed to ${action} student`);
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [studentId]: null }));
+    }
+  };
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-white text-2xl font-bold mb-6">Student Management</h2>
+      {loading ? (
+        <div className="text-gray-400">Loading students...</div>
+      ) : students.length === 0 ? (
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <p className="text-gray-400">No students in your team yet.</p>
+        </div>
+      ) : (
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-700">
+                  <th className="text-left text-gray-400 font-semibold p-3">Name</th>
+                  <th className="text-left text-gray-400 font-semibold p-3">Email</th>
+                  <th className="text-left text-gray-400 font-semibold p-3">Student ID</th>
+                  <th className="text-left text-gray-400 font-semibold p-3">Status</th>
+                  <th className="text-left text-gray-400 font-semibold p-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((student) => (
+                  <tr key={student.id || student._id} className="border-b border-gray-700 hover:bg-gray-700">
+                    <td className="p-3 text-white">{student.name}</td>
+                    <td className="p-3 text-gray-300">{student.email}</td>
+                    <td className="p-3 text-gray-300">{student.studentId || 'N/A'}</td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                        student.status === 'suspended' 
+                          ? 'bg-red-500 bg-opacity-20 text-red-400' 
+                          : 'bg-green-500 bg-opacity-20 text-green-400'
+                      }`}>
+                        {student.status === 'suspended' ? 'Suspended' : 'Active'}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleSuspendStudent(student.id || student._id, student.status || 'active')}
+                          disabled={actionLoading[student.id || student._id] === 'suspend'}
+                          className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+                            student.status === 'suspended'
+                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                          } disabled:opacity-50`}
+                        >
+                          {actionLoading[student.id || student._id] === 'suspend' ? 'Processing...' : student.status === 'suspended' ? 'Activate' : 'Suspend'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStudent(student.id || student._id)}
+                          disabled={actionLoading[student.id || student._id] === 'delete'}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-semibold transition-colors disabled:opacity-50"
+                        >
+                          {actionLoading[student.id || student._id] === 'delete' ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Fixed Private Messaging Section - Now uses real-time socket.io messaging
 const PrivateMessaging = () => {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [messageType, setMessageType] = useState('direct'); // 'direct' or 'broadcast'
   const [privateMessage, setPrivateMessage] = useState("");
-  const [privateMessages, setPrivateMessages] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { conversations, addMessage } = useManageStore();
+  const [sending, setSending] = useState(false);
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const { socket, isConnected } = useSocket();
   
   useEffect(() => {
     const loadStudents = async () => {
       try {
         setLoading(true);
-        // Get team members from API
         const teamMembers = await usersAPI.getTeamMembers();
-        // Filter out admin (admin's role is 'admin', students' role is 'student')
         const studentList = (teamMembers || []).filter(
           (m) => m.role === "student"
         );
@@ -337,127 +480,215 @@ const PrivateMessaging = () => {
     };
     
     loadStudents();
-    
-    // Listen to store changes for private messages
-    const unsubscribe = useManageStore.subscribe(
-      (state) => state.conversations,
-      (conv) => {
-        const allMsgs = Object.values(conv).flat();
-        setPrivateMessages(allMsgs);
-      }
-    );
-    return unsubscribe;
   }, []);
-  const handleSendPrivateMessage = (e) => {
+
+  // Load messages when student is selected or message type changes
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (messageType === 'broadcast' || selectedStudent) {
+        try {
+          // For broadcast, load broadcast messages
+          // For direct, load direct messages with selected student
+          let data = [];
+          if (messageType === 'broadcast') {
+            data = await messagesAPI.getTeamBroadcastMessages();
+          } else if (selectedStudent) {
+            data = await messagesAPI.getDirectMessages(selectedStudent.id || selectedStudent._id);
+          }
+          setMessages(data || []);
+        } catch (error) {
+          console.error("Error loading messages:", error);
+        }
+      }
+    };
+
+    loadMessages();
+  }, [selectedStudent, messageType]);
+
+  // Listen for real-time messages via socket.io
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleNewMessage = (message) => {
+      if (messageType === 'broadcast') {
+        // For broadcast, accept all broadcast messages (isTeamChat: false, receiverId: null)
+        if (!message.isTeamChat && !message.receiverId) {
+          setMessages((prev) => [...prev, message]);
+        }
+      } else if (selectedStudent) {
+        // For direct messages, only accept messages between admin and selected student
+        const studentId = selectedStudent.id || selectedStudent._id;
+        const adminId = currentUser.id || currentUser._id;
+        
+        const isDirectMessage = !message.isTeamChat && message.receiverId;
+        const isToOrFromSelected = 
+          (message.senderId?._id === studentId || message.senderId?._id?.toString() === studentId) ||
+          (message.receiverId?._id === studentId || message.receiverId?._id?.toString() === studentId);
+        const isFromOrToAdmin =
+          (message.senderId?._id === adminId || message.senderId?._id?.toString() === adminId) ||
+          (message.receiverId?._id === adminId || message.receiverId?._id?.toString() === adminId);
+
+        if (isDirectMessage && isToOrFromSelected && isFromOrToAdmin) {
+          setMessages((prev) => [...prev, message]);
+        }
+      }
+    };
+
+    socket.on('new_message', handleNewMessage);
+
+    return () => {
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [socket, isConnected, selectedStudent, messageType, currentUser]);
+
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (privateMessage.trim() && selectedStudent) {
-      const timestamp = new Date().toISOString();
-      const messageId = Date.now().toString();
-      // Get current admin user ID from localStorage
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const adminId = currentUser.id || currentUser._id;
-      const studentId = selectedStudent.id || selectedStudent._id;
-      
-      // Local addMessage using MongoDB _id (stored as id or _id)
-      addMessage(
-        adminId,
-        studentId,
-        adminId,
-        privateMessage,
-        timestamp,
-        messageId
-      );
+    if (!privateMessage.trim() || sending || !socket || !isConnected) return;
+
+    if (messageType === 'broadcast') {
+      // Send broadcast to all students
+      if (currentUser.role !== 'admin') {
+        alert('Only admins can send broadcasts');
+        return;
+      }
+    } else if (!selectedStudent) {
+      alert("Please select a student or choose 'All Students' for broadcast.");
+      return;
+    }
+
+    setSending(true);
+    try {
+      const messageData = {
+        receiverId: messageType === 'broadcast' ? null : (selectedStudent.id || selectedStudent._id),
+        isTeamChat: false, // false for broadcast or direct, true for team chat
+        content: privateMessage.trim(),
+        fileUrl: null,
+      };
+
+      socket.emit('send_message', messageData);
       setPrivateMessage("");
-    } else {
-      alert("Please select a student and enter a message.");
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Failed to send message');
+    } finally {
+      setSending(false);
     }
   };
-  
-  // Fixed filter: Show full conversation (sent to student OR received from student)
-  const filteredMessages = selectedStudent
-    ? privateMessages.filter((msg) => {
-        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-        const adminId = currentUser.id || currentUser._id;
-        const studentId = selectedStudent.id || selectedStudent._id;
-        const convKey = [
-          Math.min(adminId, studentId),
-          Math.max(adminId, studentId),
-        ].join("-");
-        
-        return (
-          (msg.senderId === adminId &&
-            conversations[convKey]?.some((m) => m.id === msg.id)) ||
-          (msg.senderId === studentId &&
-            conversations[convKey]?.some((m) => m.id === msg.id))
-        );
-      })
-    : [];
   return (
     <div className="mt-8">
-      <h2 className="text-white text-2xl font-bold mb-6">Private Messaging</h2>
+      <h2 className="text-white text-2xl font-bold mb-6">Messaging</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <h3 className="text-white font-semibold mb-4">Select Student</h3>
-          {loading ? (
-            <div className="text-gray-400">Loading students...</div>
-          ) : (
-            <select
-              onChange={(e) => {
-                const student = students.find(
-                  (s) => (s.id || s._id) === e.target.value
-                );
-                setSelectedStudent(student);
-              }}
-              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
-            >
-              <option value="">Choose a student</option>
-              {students.map((student) => (
-                <option key={student.id || student._id} value={student.id || student._id}>
-                  {student.name} ({student.email}) - {student.studentId || 'N/A'}
-                </option>
-              ))}
-            </select>
+          <h3 className="text-white font-semibold mb-4">Message Type</h3>
+          <div className="mb-4">
+            <label className="block text-gray-400 text-sm mb-2">
+              <input
+                type="radio"
+                name="messageType"
+                value="broadcast"
+                checked={messageType === 'broadcast'}
+                onChange={(e) => {
+                  setMessageType(e.target.value);
+                  setSelectedStudent(null);
+                  setMessages([]);
+                }}
+                className="mr-2"
+              />
+              Broadcast to All Students
+            </label>
+            <label className="block text-gray-400 text-sm">
+              <input
+                type="radio"
+                name="messageType"
+                value="direct"
+                checked={messageType === 'direct'}
+                onChange={(e) => {
+                  setMessageType(e.target.value);
+                  setMessages([]);
+                }}
+                className="mr-2"
+              />
+              Direct Message to Specific Student
+            </label>
+          </div>
+          
+          {messageType === 'direct' && (
+            <>
+              <h3 className="text-white font-semibold mb-4 mt-4">Select Student</h3>
+              {loading ? (
+                <div className="text-gray-400">Loading students...</div>
+              ) : (
+                <select
+                  value={selectedStudent ? (selectedStudent.id || selectedStudent._id) : ''}
+                  onChange={(e) => {
+                    const student = students.find(
+                      (s) => (s.id || s._id) === e.target.value
+                    );
+                    setSelectedStudent(student);
+                    setMessages([]);
+                  }}
+                  className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
+                >
+                  <option value="">Choose a student</option>
+                  {students.map((student) => (
+                    <option key={student.id || student._id} value={student.id || student._id}>
+                      {student.name} ({student.email}) - {student.studentId || 'N/A'}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </>
           )}
         </div>
-        {selectedStudent && (
+        
+        {(messageType === 'broadcast' || selectedStudent) && (
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h3 className="text-white font-semibold mb-2">
-              Message {selectedStudent.name}
+              {messageType === 'broadcast' ? 'Broadcast Message' : `Message ${selectedStudent.name}`}
             </h3>
-            <p className="text-gray-400 text-sm mb-4">
-              {selectedStudent.email} - {selectedStudent.studentId || 'N/A'}
-            </p>
-            <form onSubmit={handleSendPrivateMessage}>
+            {messageType === 'direct' && (
+              <p className="text-gray-400 text-sm mb-4">
+                {selectedStudent.email} - {selectedStudent.studentId || 'N/A'}
+              </p>
+            )}
+            <form onSubmit={handleSendMessage}>
               <div className="flex space-x-2 mb-4">
                 <input
                   type="text"
                   value={privateMessage}
                   onChange={(e) => setPrivateMessage(e.target.value)}
-                  placeholder="Send private message..."
-                  className="flex-1 bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
+                  placeholder={messageType === 'broadcast' ? 'Type broadcast message...' : 'Send private message...'}
+                  disabled={!isConnected || sending}
+                  className="flex-1 bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 disabled:opacity-50"
                 />
                 <button
                   type="submit"
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
+                  disabled={!privateMessage.trim() || sending || !isConnected}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
                 >
-                  Send
+                  {sending ? 'Sending...' : 'Send'}
                 </button>
               </div>
             </form>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {filteredMessages.map((msg) => (
+            <div className="space-y-2 max-h-60 overflow-y-auto border-t border-gray-700 pt-4 mt-4">
+              {messages.map((msg) => (
                 <div
-                  key={msg.id}
-                  className="text-sm text-gray-300 flex justify-between"
+                  key={msg._id}
+                  className="text-sm text-gray-300 flex justify-between p-2 bg-gray-700 rounded"
                 >
-                  <span>{msg.text}</span>
-                  <span>{new Date(msg.timestamp).toLocaleString()}</span>
+                  <span>{msg.content}</span>
+                  <span className="text-gray-500 text-xs">
+                    {new Date(msg.createdAt || msg.timestamp).toLocaleString()}
+                  </span>
                 </div>
               ))}
-              {filteredMessages.length === 0 && (
-                <p className="text-gray-500 text-sm">No messages yet.</p>
+              {messages.length === 0 && (
+                <p className="text-gray-500 text-sm text-center py-4">No messages yet.</p>
               )}
             </div>
+            {!isConnected && (
+              <p className="text-yellow-500 text-xs mt-2">Connecting to server...</p>
+            )}
           </div>
         )}
       </div>
@@ -4359,6 +4590,7 @@ const Administrator = () => {
           {/* New Team and Private Messaging Sections */}
           <TeamMessaging />
           <PrivateMessaging />
+          <AdminSettings />
           {isChatOpen && selectedUser && (
             <ChatModal
               onClose={() => setIsChatOpen(false)}
