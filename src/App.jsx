@@ -39,6 +39,11 @@ import WorkReady from "../Pages/WorkReady";
 import Profile from "../Pages/Profile";
 import CampusConnect from "../Pages/CampusConnect";
 import Administrator from "./Components/Administrator.jsx";
+import Login from "../Pages/Login";
+import AdminSignUp from "../Pages/AdminSignUp";
+import StudentSignUp from "../Pages/StudentSignUp";
+import AdminDashboard from "./Components/AdminDashboard";
+import StudentProfile from "./Components/StudentProfile";
 // ChatModal component (duplicated from Directory for global use in Dashboard)
 const ChatModal = ({ onClose, otherUser, currentUser }) => {
   const [newMessage, setNewMessage] = useState("");
@@ -1252,15 +1257,84 @@ const Dashboard = () => {
 const ProtectedAdministrator = () => {
   return <Administrator />;
 };
-// Main App Component - Removed Firebase Auth, always show Dashboard
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
+
+// Protected Admin Route
+const AdminRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (user.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return children;
+};
+
+// Main App Component
 const App = () => {
-  // Removed user, role, loading state
-  // Always render Dashboard as student view
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userData = JSON.parse(localStorage.getItem('user') || 'null');
+    
+    if (token && userData) {
+      setUser(userData);
+    }
+    
+    setLoading(false);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <Routes>
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/Administrator" element={<ProtectedAdministrator />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/admin-signup" element={<AdminSignUp />} />
+      <Route path="/student-signup" element={<StudentSignUp />} />
+      
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/Administrator"
+        element={
+          <AdminRoute>
+            <ProtectedAdministrator />
+          </AdminRoute>
+        }
+      />
+      
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 };
