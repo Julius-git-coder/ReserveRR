@@ -44,27 +44,44 @@ UserSchema.pre("save", async function (next) {
   // Only generate studentId for students who don't have one yet
   if (this.role === "student" && !this.studentId && this.isNew) {
     try {
-      // Find the highest existing studentId for this admin
-      const adminStudents = await this.constructor
-        .find({
-          adminId: this.adminId,
+      // Generate globally unique student ID
+      // Find the highest existing studentId globally to ensure no reuse
+      const lastStudent = await this.constructor
+        .findOne({
           role: "student",
           studentId: { $exists: true, $ne: null },
         })
         .sort({ studentId: -1 })
-        .limit(1);
+        .select("studentId");
 
       let nextNumber = 1;
-      if (adminStudents.length > 0 && adminStudents[0].studentId) {
+      if (lastStudent && lastStudent.studentId) {
         // Extract number from studentId (format: STU001, STU002, etc.)
-        const match = adminStudents[0].studentId.match(/(\d+)$/);
+        const match = lastStudent.studentId.match(/(\d+)$/);
         if (match) {
           nextNumber = parseInt(match[1]) + 1;
         }
       }
 
-      // Generate studentId in format STU001, STU002, etc.
-      this.studentId = `STU${String(nextNumber).padStart(3, "0")}`;
+      // Generate globally unique studentId in format STU001, STU002, etc.
+      let candidateId = `STU${String(nextNumber).padStart(6, "0")}`;
+      
+      // Ensure uniqueness by checking if ID exists (prevent reuse)
+      let exists = await this.constructor.findOne({ studentId: candidateId });
+      let attempts = 0;
+      while (exists && attempts < 100) {
+        nextNumber++;
+        candidateId = `STU${String(nextNumber).padStart(6, "0")}`;
+        exists = await this.constructor.findOne({ studentId: candidateId });
+        attempts++;
+      }
+
+      if (attempts >= 100) {
+        // Fallback to timestamp-based ID if we can't find a sequential one
+        candidateId = `STU${Date.now().toString().slice(-8)}`;
+      }
+
+      this.studentId = candidateId;
     } catch (error) {
       return next(error);
     }

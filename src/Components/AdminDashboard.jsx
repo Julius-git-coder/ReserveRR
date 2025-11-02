@@ -25,6 +25,36 @@ const AdminDashboard = () => {
     loadUserProfile();
   }, []);
 
+  // Listen for real-time profile updates via socket.io
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleProfileUpdate = (data) => {
+      const updatedUser = data.user;
+      // Update currentUser if it's the current user
+      if (updatedUser.id === currentUser.id) {
+        const updatedCurrentUser = { ...currentUser, ...updatedUser };
+        localStorage.setItem('user', JSON.stringify(updatedCurrentUser));
+        setUserProfile(updatedUser);
+      }
+      // Reload team members to get updated profile images
+      loadData();
+    };
+
+    const handleTeamMemberUpdate = (data) => {
+      // Reload team members when any team member updates their profile
+      loadData();
+    };
+
+    socket.on('profile_updated', handleProfileUpdate);
+    socket.on('team_member_updated', handleTeamMemberUpdate);
+
+    return () => {
+      socket.off('profile_updated', handleProfileUpdate);
+      socket.off('team_member_updated', handleTeamMemberUpdate);
+    };
+  }, [socket, isConnected, currentUser]);
+
   const loadUserProfile = async () => {
     try {
       const profile = await usersAPI.getMe();

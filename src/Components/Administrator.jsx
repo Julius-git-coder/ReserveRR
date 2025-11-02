@@ -455,7 +455,8 @@ const AdminSettings = () => {
 const PrivateMessaging = () => {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [messageType, setMessageType] = useState('direct'); // 'direct' or 'broadcast'
+  const [messageType, setMessageType] = useState('direct'); // 'direct' or 'broadcast' or 'all_students'
+  const [messageCategory, setMessageCategory] = useState('General'); // 'Announcement', 'Assignment', 'Project', 'Exercise', 'General'
   const [privateMessage, setPrivateMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -485,12 +486,12 @@ const PrivateMessaging = () => {
   // Load messages when student is selected or message type changes
   useEffect(() => {
     const loadMessages = async () => {
-      if (messageType === 'broadcast' || selectedStudent) {
+      if (messageType === 'broadcast' || messageType === 'all_students' || selectedStudent) {
         try {
-          // For broadcast, load broadcast messages
+          // For broadcast/all_students, load broadcast messages
           // For direct, load direct messages with selected student
           let data = [];
-          if (messageType === 'broadcast') {
+          if (messageType === 'broadcast' || messageType === 'all_students') {
             data = await messagesAPI.getTeamBroadcastMessages();
           } else if (selectedStudent) {
             data = await messagesAPI.getDirectMessages(selectedStudent.id || selectedStudent._id);
@@ -510,8 +511,8 @@ const PrivateMessaging = () => {
     if (!socket || !isConnected) return;
 
     const handleNewMessage = (message) => {
-      if (messageType === 'broadcast') {
-        // For broadcast, accept all broadcast messages (isTeamChat: false, receiverId: null)
+      if (messageType === 'broadcast' || messageType === 'all_students') {
+        // For broadcast/all_students, accept all broadcast messages (isTeamChat: false, receiverId: null)
         if (!message.isTeamChat && !message.receiverId) {
           setMessages((prev) => [...prev, message]);
         }
@@ -545,22 +546,23 @@ const PrivateMessaging = () => {
     e.preventDefault();
     if (!privateMessage.trim() || sending || !socket || !isConnected) return;
 
-    if (messageType === 'broadcast') {
+    if (messageType === 'broadcast' || messageType === 'all_students') {
       // Send broadcast to all students
       if (currentUser.role !== 'admin') {
         alert('Only admins can send broadcasts');
         return;
       }
     } else if (!selectedStudent) {
-      alert("Please select a student or choose 'All Students' for broadcast.");
+      alert("Please select a student or choose 'ALL Students' for broadcast.");
       return;
     }
 
     setSending(true);
     try {
       const messageData = {
-        receiverId: messageType === 'broadcast' ? null : (selectedStudent.id || selectedStudent._id),
+        receiverId: (messageType === 'broadcast' || messageType === 'all_students') ? null : (selectedStudent.id || selectedStudent._id),
         isTeamChat: false, // false for broadcast or direct, true for team chat
+        messageType: messageCategory, // Use message category (Announcement, Assignment, etc.)
         content: privateMessage.trim(),
         fileUrl: null,
       };
@@ -580,36 +582,41 @@ const PrivateMessaging = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <h3 className="text-white font-semibold mb-4">Message Type</h3>
+          
+          {/* Message Category Selector */}
           <div className="mb-4">
-            <label className="block text-gray-400 text-sm mb-2">
-              <input
-                type="radio"
-                name="messageType"
-                value="broadcast"
-                checked={messageType === 'broadcast'}
-                onChange={(e) => {
-                  setMessageType(e.target.value);
+            <label className="block text-gray-400 text-sm mb-2">Message Category</label>
+            <select
+              value={messageCategory}
+              onChange={(e) => setMessageCategory(e.target.value)}
+              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 mb-4"
+            >
+              <option value="General">General</option>
+              <option value="Announcement">Announcement</option>
+              <option value="Assignment">Assignment</option>
+              <option value="Project">Project</option>
+              <option value="Exercise">Exercise</option>
+            </select>
+          </div>
+
+          {/* Recipient Type Selector */}
+          <div className="mb-4">
+            <label className="block text-gray-400 text-sm mb-2">Recipient</label>
+            <select
+              value={messageType}
+              onChange={(e) => {
+                setMessageType(e.target.value);
+                if (e.target.value !== 'direct') {
                   setSelectedStudent(null);
-                  setMessages([]);
-                }}
-                className="mr-2"
-              />
-              Broadcast to All Students
-            </label>
-            <label className="block text-gray-400 text-sm">
-              <input
-                type="radio"
-                name="messageType"
-                value="direct"
-                checked={messageType === 'direct'}
-                onChange={(e) => {
-                  setMessageType(e.target.value);
-                  setMessages([]);
-                }}
-                className="mr-2"
-              />
-              Direct Message to Specific Student
-            </label>
+                }
+                setMessages([]);
+              }}
+              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
+            >
+              <option value="all_students">ALL Students</option>
+              <option value="broadcast">Broadcast to All Students</option>
+              <option value="direct">Direct Message to Specific Student</option>
+            </select>
           </div>
           
           {messageType === 'direct' && (
@@ -629,10 +636,10 @@ const PrivateMessaging = () => {
                   }}
                   className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
                 >
-                  <option value="">Choose a student</option>
+                  <option value="">Choose a student by ID</option>
                   {students.map((student) => (
                     <option key={student.id || student._id} value={student.id || student._id}>
-                      {student.name} ({student.email}) - {student.studentId || 'N/A'}
+                      {student.studentId || 'N/A'} - {student.name} ({student.email})
                     </option>
                   ))}
                 </select>
@@ -641,14 +648,16 @@ const PrivateMessaging = () => {
           )}
         </div>
         
-        {(messageType === 'broadcast' || selectedStudent) && (
+        {(messageType === 'broadcast' || messageType === 'all_students' || selectedStudent) && (
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h3 className="text-white font-semibold mb-2">
-              {messageType === 'broadcast' ? 'Broadcast Message' : `Message ${selectedStudent.name}`}
+              {messageType === 'broadcast' || messageType === 'all_students' 
+                ? `Send ${messageCategory} to ALL Students` 
+                : `Send ${messageCategory} to ${selectedStudent.name}`}
             </h3>
             {messageType === 'direct' && (
               <p className="text-gray-400 text-sm mb-4">
-                {selectedStudent.email} - {selectedStudent.studentId || 'N/A'}
+                Student ID: {selectedStudent.studentId || 'N/A'} - {selectedStudent.email}
               </p>
             )}
             <form onSubmit={handleSendMessage}>

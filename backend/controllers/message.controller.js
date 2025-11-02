@@ -124,7 +124,7 @@ export const getDirectMessages = async (req, res) => {
 // Send a message (for REST API, Socket.io handles real-time)
 export const sendMessage = async (req, res) => {
   try {
-    const { receiverId, isTeamChat, content, fileUrl } = req.body;
+    const { receiverId, isTeamChat, content, fileUrl, messageType } = req.body;
     const senderId = req.user.id;
 
     // Validation
@@ -156,6 +156,7 @@ export const sendMessage = async (req, res) => {
         receiverId: null,
         adminId,
         isTeamChat: true,
+        messageType: messageType || 'General',
         content: content || null,
         fileUrl: fileUrl || null,
       });
@@ -179,6 +180,7 @@ export const sendMessage = async (req, res) => {
         receiverId: null,
         adminId,
         isTeamChat: false,
+        messageType: messageType || 'General',
         content: content || null,
         fileUrl: fileUrl || null,
       });
@@ -212,6 +214,7 @@ export const sendMessage = async (req, res) => {
       receiverId,
       adminId,
       isTeamChat: false,
+      messageType: messageType || 'Direct',
       content: content || null,
       fileUrl: fileUrl || null,
     });
@@ -234,7 +237,7 @@ export const broadcastMessage = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const { content, fileUrl } = req.body;
+    const { content, fileUrl, messageType } = req.body;
 
     if (!content && !fileUrl) {
       return res.status(400).json({ message: 'Content or file is required' });
@@ -245,6 +248,7 @@ export const broadcastMessage = async (req, res) => {
       receiverId: null, // Broadcast
       adminId: req.user.id,
       isTeamChat: false,
+      messageType: messageType || 'General',
       content: content || null,
       fileUrl: fileUrl || null,
     });
