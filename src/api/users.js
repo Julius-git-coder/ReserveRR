@@ -20,5 +20,10 @@ export const usersAPI = {
     const response = await apiClient.get('/users/admins/me/stats');
     return response.data;
   },
+
+  updateProfile: async (data) => {
+    const response = await apiClient.put('/users/me', data);
+    return response.data;
+  },
 };
 
