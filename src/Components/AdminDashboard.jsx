@@ -32,8 +32,9 @@ const AdminDashboard = () => {
     const handleProfileUpdate = (data) => {
       const updatedUser = data.user;
       // Update currentUser if it's the current user
-      if (updatedUser.id === currentUser.id) {
-        const updatedCurrentUser = { ...currentUser, ...updatedUser };
+      const localCurrentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (updatedUser.id === localCurrentUser.id) {
+        const updatedCurrentUser = { ...localCurrentUser, ...updatedUser };
         localStorage.setItem('user', JSON.stringify(updatedCurrentUser));
         setUserProfile(updatedUser);
       }
@@ -53,7 +54,7 @@ const AdminDashboard = () => {
       socket.off('profile_updated', handleProfileUpdate);
       socket.off('team_member_updated', handleTeamMemberUpdate);
     };
-  }, [socket, isConnected, currentUser]);
+  }, [socket, isConnected]); // Removed currentUser dependency to avoid stale closures
 
   const loadUserProfile = async () => {
     try {
