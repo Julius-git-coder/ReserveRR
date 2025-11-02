@@ -316,25 +316,42 @@ const AdminSettings = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState({});
+  const { socket, isConnected } = useSocket();
+
+  const loadStudents = async () => {
+    try {
+      setLoading(true);
+      const teamMembers = await usersAPI.getTeamMembers();
+      const studentList = (teamMembers || []).filter(
+        (m) => m.role === "student"
+      );
+      setStudents(studentList);
+    } catch (error) {
+      console.error("Error loading students:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadStudents = async () => {
-      try {
-        setLoading(true);
-        const teamMembers = await usersAPI.getTeamMembers();
-        const studentList = (teamMembers || []).filter(
-          (m) => m.role === "student"
-        );
-        setStudents(studentList);
-      } catch (error) {
-        console.error("Error loading students:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadStudents();
   }, []);
+
+  // Listen for real-time profile updates
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleTeamMemberUpdate = () => {
+      // Reload students when any team member updates their profile
+      loadStudents();
+    };
+
+    socket.on('team_member_updated', handleTeamMemberUpdate);
+
+    return () => {
+      socket.off('team_member_updated', handleTeamMemberUpdate);
+    };
+  }, [socket, isConnected]);
 
   const handleDeleteStudent = async (studentId) => {
     if (!confirm("Are you sure you want to delete this student? This action cannot be undone.")) {

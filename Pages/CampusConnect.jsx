@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { usersAPI } from "../src/api/users";
 import ChatWindow from "../src/Components/ChatWindow";
+import { useSocket } from "../src/context/SocketContext";
 
 const CampusConnect = () => {
   const [teamMembers, setTeamMembers] = useState([]);
@@ -14,10 +15,7 @@ const CampusConnect = () => {
   const [selectedMember, setSelectedMember] = useState(null);
   const [showTeamChat, setShowTeamChat] = useState(false);
   const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-
-  useEffect(() => {
-    loadTeamMembers();
-  }, []);
+  const { socket, isConnected } = useSocket();
 
   const loadTeamMembers = async () => {
     try {
@@ -31,6 +29,26 @@ const CampusConnect = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadTeamMembers();
+  }, []);
+
+  // Listen for real-time profile updates
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleTeamMemberUpdate = () => {
+      // Reload team members when any member updates their profile
+      loadTeamMembers();
+    };
+
+    socket.on('team_member_updated', handleTeamMemberUpdate);
+
+    return () => {
+      socket.off('team_member_updated', handleTeamMemberUpdate);
+    };
+  }, [socket, isConnected]);
 
   if (loading) {
     return (
