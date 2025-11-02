@@ -4,7 +4,22 @@ import { uploadMiddleware, uploadFile } from '../controllers/upload.controller.j
 
 const router = express.Router();
 
-router.post('/', auth, uploadMiddleware, uploadFile);
+// Handle multer errors
+const handleMulterError = (err, req, res, next) => {
+  if (err) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ message: 'File too large. Maximum size is 10MB' });
+    }
+    if (err.message === 'Only images and documents are allowed') {
+      return res.status(400).json({ message: err.message });
+    }
+    console.error('Multer error:', err);
+    return res.status(400).json({ message: 'File upload error', error: err.message });
+  }
+  next();
+};
+
+router.post('/', auth, uploadMiddleware, handleMulterError, uploadFile);
 
 export default router;
 
