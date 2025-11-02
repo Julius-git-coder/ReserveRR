@@ -399,21 +399,28 @@ const AdminSettings = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end">
+    <div className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="absolute inset-0 bg-black bg-opacity-50 transition-opacity z-40"
         onClick={onClose}
       />
       
       {/* Side Modal */}
-      <div className="relative bg-gray-800 w-full max-w-2xl h-full overflow-y-auto shadow-2xl transform transition-transform duration-300 ease-out">
+      <div 
+        className="absolute right-0 top-0 bottom-0 bg-gray-800 w-full max-w-2xl h-full overflow-y-auto shadow-2xl transform transition-transform duration-300 ease-out z-50"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="sticky top-0 bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between z-10">
           <h2 className="text-white text-2xl font-bold">Student Management</h2>
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
             className="text-gray-400 hover:text-white transition-colors"
+            type="button"
           >
             <X className="w-6 h-6" />
           </button>
