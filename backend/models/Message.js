@@ -5,6 +5,11 @@ const MessageSchema = new mongoose.Schema({
   receiverId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // null = team broadcast or team chat
   adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Admin who owns the team
   isTeamChat: { type: Boolean, default: false }, // true = team chat room, false = direct message or broadcast
+  messageType: { 
+    type: String, 
+    enum: ['Announcement', 'Assignment', 'Project', 'Exercise', 'General', 'Direct'], 
+    default: 'General' 
+  }, // Message type for categorization
   content: { type: String },
   fileUrl: { type: String },
   readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

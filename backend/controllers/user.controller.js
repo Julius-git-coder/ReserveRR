@@ -137,6 +137,20 @@ export const updateProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Determine adminId for real-time updates
+    let adminId;
+    if (user.role === "admin") {
+      adminId = user._id;
+    } else {
+      adminId = user.adminId;
+    }
+
+    // Emit real-time profile update via socket.io
+    const io = req.app.locals.io;
+    if (io && io.emitProfileUpdate) {
+      io.emitProfileUpdate(user, adminId);
+    }
+
     // Build response similar to getMe
     let responseUser = {
       id: user._id,

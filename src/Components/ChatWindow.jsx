@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Paperclip } from 'lucide-react';
+import { X, Send, Paperclip, User } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { messagesAPI } from '../api/messages';
 import { uploadsAPI } from '../api/uploads';
-import { User } from 'lucide-react';
 
 const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, adminId }) => {
   const [messages, setMessages] = useState([]);
@@ -11,6 +10,7 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, admin
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [updatedCurrentUser, setUpdatedCurrentUser] = useState(currentUser);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const { socket, isConnected } = useSocket();
@@ -70,10 +70,61 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, admin
       }
     };
 
+    // Listen for profile updates
+    const handleProfileUpdate = (data) => {
+      const updatedUser = data.user;
+      // Update currentUser if it's the current user
+      if (updatedUser.id === (currentUser.id || updatedCurrentUser.id)) {
+        const newCurrentUser = { ...currentUser, ...updatedUser };
+        localStorage.setItem('user', JSON.stringify(newCurrentUser));
+        setUpdatedCurrentUser(newCurrentUser);
+        // Reload messages to get updated profile images
+        if (isTeamChat || otherUser) {
+          const loadMessages = async () => {
+            try {
+              let data;
+              if (isTeamChat) {
+                data = await messagesAPI.getTeamChatMessages();
+              } else {
+                data = await messagesAPI.getDirectMessages(otherUser._id || otherUser.id);
+              }
+              setMessages(data || []);
+            } catch (error) {
+              console.error('Error reloading messages:', error);
+            }
+          };
+          loadMessages();
+        }
+      }
+    };
+
+    // Listen for team member updates (for team chat and other users)
+    const handleTeamMemberUpdate = (data) => {
+      const updatedMember = data.user;
+      // Update otherUser if it matches
+      if (!isTeamChat && otherUser && (updatedMember.id === (otherUser._id || otherUser.id))) {
+        // Update otherUser in parent component would be needed
+        // For now, reload messages to get fresh data
+        const loadMessages = async () => {
+          try {
+            const data = await messagesAPI.getDirectMessages(otherUser._id || otherUser.id);
+            setMessages(data || []);
+          } catch (error) {
+            console.error('Error reloading messages:', error);
+          }
+        };
+        loadMessages();
+      }
+    };
+
     socket.on('new_message', handleNewMessage);
+    socket.on('profile_updated', handleProfileUpdate);
+    socket.on('team_member_updated', handleTeamMemberUpdate);
 
     return () => {
       socket.off('new_message', handleNewMessage);
+      socket.off('profile_updated', handleProfileUpdate);
+      socket.off('team_member_updated', handleTeamMemberUpdate);
     };
   }, [socket, isConnected, otherUser, currentUser, isTeamChat, teamAdminId]);
 
@@ -159,7 +210,13 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, admin
               {!isTeamChat && otherUser?.profileImage ? (
                 <img
                   src={otherUser.profileImage}
-                  alt={otherUser.name}
+                  alt={otherUser.name || 'User'}
+                  className="w-full h-full object-cover"
+                />
+              ) : isTeamChat && currentUser?.profileImage ? (
+                <img
+                  src={currentUser.profileImage}
+                  alt={currentUser.name || 'Team'}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -194,12 +251,26 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, admin
               const senderIdValue = getSenderIdValue(msg.senderId);
               const currentUserId = currentUser.id;
               const isMyMessage = senderIdValue === currentUserId || senderIdValue?.toString() === currentUserId;
+              const senderProfileImage = msg.senderId?.profileImage || (isMyMessage ? currentUser.profileImage : null);
               
               return (
                 <div
                   key={msg._id}
-                  className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'} items-start space-x-2`}
                 >
+                  {!isMyMessage && (
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden bg-gray-600 flex-shrink-0">
+                      {senderProfileImage ? (
+                        <img
+                          src={senderProfileImage}
+                          alt={getSenderName(msg.senderId)}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-4 h-4 text-gray-300" />
+                      )}
+                    </div>
+                  )}
                   <div className="max-w-xs lg:max-w-md">
                     {!isMyMessage && (
                       <p className="text-gray-400 text-xs mb-1">
@@ -243,6 +314,19 @@ const ChatWindow = ({ onClose, otherUser, currentUser, isTeamChat = false, admin
                       </p>
                     </div>
                   </div>
+                  {isMyMessage && (
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden bg-gray-600 flex-shrink-0">
+                      {(updatedCurrentUser?.profileImage || currentUser.profileImage) ? (
+                        <img
+                          src={updatedCurrentUser?.profileImage || currentUser.profileImage}
+                          alt={updatedCurrentUser?.name || currentUser.name || 'You'}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-4 h-4 text-gray-300" />
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })

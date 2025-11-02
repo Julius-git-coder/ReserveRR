@@ -18,6 +18,9 @@ const server = http.createServer(app);
 // Setup Socket.io
 const io = setupSocket(server);
 
+// Make io accessible to routes via app.locals
+app.locals.io = io;
+
 // Middleware
 app.use(cors());
 app.use(express.json());

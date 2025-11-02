@@ -311,30 +311,47 @@ const TeamMessaging = () => {
     </div>
   );
 };
-// Admin Settings Component - Delete and Suspend Students
-const AdminSettings = () => {
+// Admin Settings Component - Delete and Suspend Students (Side Modal)
+const AdminSettings = ({ onClose }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState({});
+  const { socket, isConnected } = useSocket();
+
+  const loadStudents = async () => {
+    try {
+      setLoading(true);
+      const teamMembers = await usersAPI.getTeamMembers();
+      const studentList = (teamMembers || []).filter(
+        (m) => m.role === "student"
+      );
+      setStudents(studentList);
+    } catch (error) {
+      console.error("Error loading students:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadStudents = async () => {
-      try {
-        setLoading(true);
-        const teamMembers = await usersAPI.getTeamMembers();
-        const studentList = (teamMembers || []).filter(
-          (m) => m.role === "student"
-        );
-        setStudents(studentList);
-      } catch (error) {
-        console.error("Error loading students:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadStudents();
   }, []);
+
+  // Listen for real-time profile updates
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleTeamMemberUpdate = () => {
+      // Reload students when any team member updates their profile
+      loadStudents();
+    };
+
+    socket.on('team_member_updated', handleTeamMemberUpdate);
+
+    return () => {
+      socket.off('team_member_updated', handleTeamMemberUpdate);
+    };
+  }, [socket, isConnected]);
 
   const handleDeleteStudent = async (studentId) => {
     if (!confirm("Are you sure you want to delete this student? This action cannot be undone.")) {
@@ -382,71 +399,93 @@ const AdminSettings = () => {
   };
 
   return (
-    <div className="mt-8">
-      <h2 className="text-white text-2xl font-bold mb-6">Student Management</h2>
-      {loading ? (
-        <div className="text-gray-400">Loading students...</div>
-      ) : students.length === 0 ? (
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <p className="text-gray-400">No students in your team yet.</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-end">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
+        onClick={onClose}
+      />
+      
+      {/* Side Modal */}
+      <div className="relative bg-gray-800 w-full max-w-2xl h-full overflow-y-auto shadow-2xl transform transition-transform duration-300 ease-out">
+        {/* Header */}
+        <div className="sticky top-0 bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between z-10">
+          <h2 className="text-white text-2xl font-bold">Student Management</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
-      ) : (
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left text-gray-400 font-semibold p-3">Name</th>
-                  <th className="text-left text-gray-400 font-semibold p-3">Email</th>
-                  <th className="text-left text-gray-400 font-semibold p-3">Student ID</th>
-                  <th className="text-left text-gray-400 font-semibold p-3">Status</th>
-                  <th className="text-left text-gray-400 font-semibold p-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((student) => (
-                  <tr key={student.id || student._id} className="border-b border-gray-700 hover:bg-gray-700">
-                    <td className="p-3 text-white">{student.name}</td>
-                    <td className="p-3 text-gray-300">{student.email}</td>
-                    <td className="p-3 text-gray-300">{student.studentId || 'N/A'}</td>
-                    <td className="p-3">
-                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                        student.status === 'suspended' 
-                          ? 'bg-red-500 bg-opacity-20 text-red-400' 
-                          : 'bg-green-500 bg-opacity-20 text-green-400'
-                      }`}>
-                        {student.status === 'suspended' ? 'Suspended' : 'Active'}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleSuspendStudent(student.id || student._id, student.status || 'active')}
-                          disabled={actionLoading[student.id || student._id] === 'suspend'}
-                          className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
-                            student.status === 'suspended'
-                              ? 'bg-green-600 hover:bg-green-700 text-white'
-                              : 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                          } disabled:opacity-50`}
-                        >
-                          {actionLoading[student.id || student._id] === 'suspend' ? 'Processing...' : student.status === 'suspended' ? 'Activate' : 'Suspend'}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteStudent(student.id || student._id)}
-                          disabled={actionLoading[student.id || student._id] === 'delete'}
-                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-semibold transition-colors disabled:opacity-50"
-                        >
-                          {actionLoading[student.id || student._id] === 'delete' ? 'Deleting...' : 'Delete'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+        {/* Content */}
+        <div className="p-6">
+          {loading ? (
+            <div className="text-gray-400 text-center py-8">Loading students...</div>
+          ) : students.length === 0 ? (
+            <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
+              <p className="text-gray-400 text-center">No students in your team yet.</p>
+            </div>
+          ) : (
+            <div className="bg-gray-700 rounded-lg border border-gray-600 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-800">
+                    <tr className="border-b border-gray-600">
+                      <th className="text-left text-gray-300 font-semibold p-3">Name</th>
+                      <th className="text-left text-gray-300 font-semibold p-3">Email</th>
+                      <th className="text-left text-gray-300 font-semibold p-3">Student ID</th>
+                      <th className="text-left text-gray-300 font-semibold p-3">Status</th>
+                      <th className="text-left text-gray-300 font-semibold p-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {students.map((student) => (
+                      <tr key={student.id || student._id} className="border-b border-gray-600 hover:bg-gray-600 transition-colors">
+                        <td className="p-3 text-white">{student.name}</td>
+                        <td className="p-3 text-gray-300">{student.email}</td>
+                        <td className="p-3 text-gray-300">{student.studentId || 'N/A'}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            student.status === 'suspended' 
+                              ? 'bg-red-500 bg-opacity-20 text-red-400' 
+                              : 'bg-green-500 bg-opacity-20 text-green-400'
+                          }`}>
+                            {student.status === 'suspended' ? 'Suspended' : 'Active'}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleSuspendStudent(student.id || student._id, student.status || 'active')}
+                              disabled={actionLoading[student.id || student._id] === 'suspend'}
+                              className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+                                student.status === 'suspended'
+                                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                                  : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                              } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                              {actionLoading[student.id || student._id] === 'suspend' ? 'Processing...' : student.status === 'suspended' ? 'Activate' : 'Suspend'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStudent(student.id || student._id)}
+                              disabled={actionLoading[student.id || student._id] === 'delete'}
+                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {actionLoading[student.id || student._id] === 'delete' ? 'Deleting...' : 'Delete'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
@@ -455,7 +494,8 @@ const AdminSettings = () => {
 const PrivateMessaging = () => {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [messageType, setMessageType] = useState('direct'); // 'direct' or 'broadcast'
+  const [messageType, setMessageType] = useState('direct'); // 'direct' or 'broadcast' or 'all_students'
+  const [messageCategory, setMessageCategory] = useState('General'); // 'Announcement', 'Assignment', 'Project', 'Exercise', 'General'
   const [privateMessage, setPrivateMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -485,12 +525,12 @@ const PrivateMessaging = () => {
   // Load messages when student is selected or message type changes
   useEffect(() => {
     const loadMessages = async () => {
-      if (messageType === 'broadcast' || selectedStudent) {
+      if (messageType === 'broadcast' || messageType === 'all_students' || selectedStudent) {
         try {
-          // For broadcast, load broadcast messages
+          // For broadcast/all_students, load broadcast messages
           // For direct, load direct messages with selected student
           let data = [];
-          if (messageType === 'broadcast') {
+          if (messageType === 'broadcast' || messageType === 'all_students') {
             data = await messagesAPI.getTeamBroadcastMessages();
           } else if (selectedStudent) {
             data = await messagesAPI.getDirectMessages(selectedStudent.id || selectedStudent._id);
@@ -510,8 +550,8 @@ const PrivateMessaging = () => {
     if (!socket || !isConnected) return;
 
     const handleNewMessage = (message) => {
-      if (messageType === 'broadcast') {
-        // For broadcast, accept all broadcast messages (isTeamChat: false, receiverId: null)
+      if (messageType === 'broadcast' || messageType === 'all_students') {
+        // For broadcast/all_students, accept all broadcast messages (isTeamChat: false, receiverId: null)
         if (!message.isTeamChat && !message.receiverId) {
           setMessages((prev) => [...prev, message]);
         }
@@ -545,22 +585,23 @@ const PrivateMessaging = () => {
     e.preventDefault();
     if (!privateMessage.trim() || sending || !socket || !isConnected) return;
 
-    if (messageType === 'broadcast') {
+    if (messageType === 'broadcast' || messageType === 'all_students') {
       // Send broadcast to all students
       if (currentUser.role !== 'admin') {
         alert('Only admins can send broadcasts');
         return;
       }
     } else if (!selectedStudent) {
-      alert("Please select a student or choose 'All Students' for broadcast.");
+      alert("Please select a student or choose 'ALL Students' for broadcast.");
       return;
     }
 
     setSending(true);
     try {
       const messageData = {
-        receiverId: messageType === 'broadcast' ? null : (selectedStudent.id || selectedStudent._id),
+        receiverId: (messageType === 'broadcast' || messageType === 'all_students') ? null : (selectedStudent.id || selectedStudent._id),
         isTeamChat: false, // false for broadcast or direct, true for team chat
+        messageType: messageCategory, // Use message category (Announcement, Assignment, etc.)
         content: privateMessage.trim(),
         fileUrl: null,
       };
@@ -580,36 +621,41 @@ const PrivateMessaging = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <h3 className="text-white font-semibold mb-4">Message Type</h3>
+          
+          {/* Message Category Selector */}
           <div className="mb-4">
-            <label className="block text-gray-400 text-sm mb-2">
-              <input
-                type="radio"
-                name="messageType"
-                value="broadcast"
-                checked={messageType === 'broadcast'}
-                onChange={(e) => {
-                  setMessageType(e.target.value);
+            <label className="block text-gray-400 text-sm mb-2">Message Category</label>
+            <select
+              value={messageCategory}
+              onChange={(e) => setMessageCategory(e.target.value)}
+              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 mb-4"
+            >
+              <option value="General">General</option>
+              <option value="Announcement">Announcement</option>
+              <option value="Assignment">Assignment</option>
+              <option value="Project">Project</option>
+              <option value="Exercise">Exercise</option>
+            </select>
+          </div>
+
+          {/* Recipient Type Selector */}
+          <div className="mb-4">
+            <label className="block text-gray-400 text-sm mb-2">Recipient</label>
+            <select
+              value={messageType}
+              onChange={(e) => {
+                setMessageType(e.target.value);
+                if (e.target.value !== 'direct') {
                   setSelectedStudent(null);
-                  setMessages([]);
-                }}
-                className="mr-2"
-              />
-              Broadcast to All Students
-            </label>
-            <label className="block text-gray-400 text-sm">
-              <input
-                type="radio"
-                name="messageType"
-                value="direct"
-                checked={messageType === 'direct'}
-                onChange={(e) => {
-                  setMessageType(e.target.value);
-                  setMessages([]);
-                }}
-                className="mr-2"
-              />
-              Direct Message to Specific Student
-            </label>
+                }
+                setMessages([]);
+              }}
+              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
+            >
+              <option value="all_students">ALL Students</option>
+              <option value="broadcast">Broadcast to All Students</option>
+              <option value="direct">Direct Message to Specific Student</option>
+            </select>
           </div>
           
           {messageType === 'direct' && (
@@ -629,10 +675,10 @@ const PrivateMessaging = () => {
                   }}
                   className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
                 >
-                  <option value="">Choose a student</option>
+                  <option value="">Choose a student by ID</option>
                   {students.map((student) => (
                     <option key={student.id || student._id} value={student.id || student._id}>
-                      {student.name} ({student.email}) - {student.studentId || 'N/A'}
+                      {student.studentId || 'N/A'} - {student.name} ({student.email})
                     </option>
                   ))}
                 </select>
@@ -641,14 +687,16 @@ const PrivateMessaging = () => {
           )}
         </div>
         
-        {(messageType === 'broadcast' || selectedStudent) && (
+        {(messageType === 'broadcast' || messageType === 'all_students' || selectedStudent) && (
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h3 className="text-white font-semibold mb-2">
-              {messageType === 'broadcast' ? 'Broadcast Message' : `Message ${selectedStudent.name}`}
+              {messageType === 'broadcast' || messageType === 'all_students' 
+                ? `Send ${messageCategory} to ALL Students` 
+                : `Send ${messageCategory} to ${selectedStudent.name}`}
             </h3>
             {messageType === 'direct' && (
               <p className="text-gray-400 text-sm mb-4">
-                {selectedStudent.email} - {selectedStudent.studentId || 'N/A'}
+                Student ID: {selectedStudent.studentId || 'N/A'} - {selectedStudent.email}
               </p>
             )}
             <form onSubmit={handleSendMessage}>
@@ -1133,6 +1181,7 @@ const Administrator = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [studentCount, setStudentCount] = useState(0);
   const [adminProfile, setAdminProfile] = useState(null);
   const markAsRead = useManageStore((state) => state.markAsRead);
@@ -2943,7 +2992,10 @@ const Administrator = () => {
               <option value="program">New Program</option>
               <option value="milestone">New Milestone</option>
             </select>
-            <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2">
+            <button 
+              onClick={() => setShowSettings(!showSettings)}
+              className={`${showSettings ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900' : 'bg-gray-800 hover:bg-gray-700 text-white'} px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2 font-semibold`}
+            >
               <Settings className="w-4 h-4" />
               <span>Settings</span>
             </button>
@@ -4590,7 +4642,7 @@ const Administrator = () => {
           {/* New Team and Private Messaging Sections */}
           <TeamMessaging />
           <PrivateMessaging />
-          <AdminSettings />
+          {showSettings && <AdminSettings onClose={() => setShowSettings(false)} />}
           {isChatOpen && selectedUser && (
             <ChatModal
               onClose={() => setIsChatOpen(false)}
