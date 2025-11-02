@@ -1,5 +1,5 @@
 // Complete fixed App.js
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Home,
   Users,
@@ -44,6 +44,8 @@ import AdminSignUp from "../Pages/AdminSignUp";
 import StudentSignUp from "../Pages/StudentSignUp";
 import AdminDashboard from "./Components/AdminDashboard";
 import StudentProfile from "./Components/StudentProfile";
+import { useSocket } from "./context/SocketContext";
+import { usersAPI } from "./api/users";
 // ChatModal component (duplicated from Directory for global use in Dashboard)
 const ChatModal = ({ onClose, otherUser, currentUser }) => {
   const [newMessage, setNewMessage] = useState("");
@@ -1080,8 +1082,14 @@ const DashboardContent = ({ setActiveTab, studentProfile, currentUserId }) => {
         nextWeekData={nextWeekData}
         setActiveTab={setActiveTab}
       />
-      <PerformanceHub setActiveTab={setActiveTab} currentUserId={currentUserId} />
-      <RecentUpdates setActiveTab={setActiveTab} currentUserId={currentUserId} />
+      <PerformanceHub
+        setActiveTab={setActiveTab}
+        currentUserId={currentUserId}
+      />
+      <RecentUpdates
+        setActiveTab={setActiveTab}
+        currentUserId={currentUserId}
+      />
     </div>
   );
 };
@@ -1096,7 +1104,8 @@ const Dashboard = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [studentProfile, setStudentProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+  const { socket, isConnected } = useSocket();
+
   const markAsRead = useManageStore((state) => state.markAsRead);
   const markNotificationAsRead = useManageStore(
     (state) => state.markNotificationAsRead
@@ -1118,46 +1127,107 @@ const Dashboard = () => {
   } = useManageStore();
 
   // Load user data and directory
-  useEffect(() => {
-    const loadData = async () => {
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      setCurrentUser({
+        id: userData.id || userData._id,
+        _id: userData.id || userData._id,
+        name: userData.name,
+      });
+
+      // Load team members from API
+      const teamMembers = await usersAPI.getTeamMembers();
+      const formattedDirectory = (teamMembers || []).map((member) => ({
+        id: member._id || member.id,
+        _id: member._id || member.id,
+        name: member.name,
+        email: member.email,
+        role: member.role === "admin" ? "Administrator" : "Student",
+        profileImage: member.profileImage,
+        pictureUrl: member.profileImage, // Add pictureUrl for compatibility
+        studentId: member.studentId,
+      }));
+      setDirectory(formattedDirectory);
+      setStoreDirectory(formattedDirectory);
+
+      // Find current user's profile - try to get fresh from API first
       try {
-        setLoading(true);
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        setCurrentUser({
-          id: userData.id || userData._id,
-          _id: userData.id || userData._id,
-          name: userData.name,
-        });
-
-        // Load team members from API
-        const { usersAPI } = await import('./api/users');
-        const teamMembers = await usersAPI.getTeamMembers();
-        const formattedDirectory = (teamMembers || []).map(member => ({
-          id: member._id || member.id,
-          _id: member._id || member.id,
-          name: member.name,
-          email: member.email,
-          role: member.role === 'admin' ? 'Administrator' : 'Student',
-          profileImage: member.profileImage,
-          studentId: member.studentId,
-        }));
-        setDirectory(formattedDirectory);
-        setStoreDirectory(formattedDirectory);
-
-        // Find current user's profile
+        const freshProfile = await usersAPI.getMe();
+        const updatedProfile = {
+          ...freshProfile,
+          pictureUrl: freshProfile.profileImage, // Add pictureUrl for compatibility
+          id: freshProfile.id || freshProfile._id,
+          _id: freshProfile.id || freshProfile._id,
+        };
+        setStudentProfile(updatedProfile);
+        // Update localStorage with fresh data
+        localStorage.setItem("user", JSON.stringify(freshProfile));
+      } catch (error) {
+        // Fallback to directory or local storage
         const profile = formattedDirectory.find(
           (u) => (u.id || u._id) === (userData.id || userData._id)
         );
         setStudentProfile(profile || userData);
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-      } finally {
-        setLoading(false);
       }
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [setStoreDirectory]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Listen for real-time profile updates via socket.io
+  useEffect(() => {
+    if (!socket || !isConnected || !loadData) return;
+
+    const handleProfileUpdate = (data) => {
+      const updatedUser = data.user;
+      const localCurrentUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+      // Update currentUser if it's the current user
+      if (updatedUser.id === (localCurrentUser.id || localCurrentUser._id)) {
+        const updatedCurrentUser = { ...localCurrentUser, ...updatedUser };
+        localStorage.setItem("user", JSON.stringify(updatedCurrentUser));
+
+        // Update student profile with new data
+        const updatedProfile = {
+          ...updatedUser,
+          pictureUrl: updatedUser.profileImage, // Add pictureUrl for compatibility
+          id: updatedUser.id,
+          _id: updatedUser.id,
+        };
+        setStudentProfile(updatedProfile);
+
+        // Update currentUser state
+        setCurrentUser((prev) => ({
+          ...prev,
+          name: updatedUser.name,
+        }));
+      }
+
+      // Reload directory to get updated profile images for all team members
+      loadData();
     };
 
-    loadData();
-  }, [setStoreDirectory]);
+    const handleTeamMemberUpdate = (data) => {
+      // Reload directory when any team member updates their profile
+      loadData();
+    };
+
+    socket.on("profile_updated", handleProfileUpdate);
+    socket.on("team_member_updated", handleTeamMemberUpdate);
+
+    return () => {
+      socket.off("profile_updated", handleProfileUpdate);
+      socket.off("team_member_updated", handleTeamMemberUpdate);
+    };
+  }, [socket, isConnected, loadData]);
 
   if (loading || !currentUser) {
     return (
@@ -1180,7 +1250,13 @@ const Dashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <DashboardContent setActiveTab={setActiveTab} studentProfile={studentProfile} currentUserId={studentId} />;
+        return (
+          <DashboardContent
+            setActiveTab={setActiveTab}
+            studentProfile={studentProfile}
+            currentUserId={studentId}
+          />
+        );
       case "connect":
         return <CampusConnect />;
       case "announcements":
@@ -1303,29 +1379,29 @@ const ProtectedAdministrator = () => {
 };
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
   if (!token) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 };
 
 // Protected Admin Route
 const AdminRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
   if (!token) {
     return <Navigate to="/login" replace />;
   }
-  
-  if (user.role !== 'admin') {
+
+  if (user.role !== "admin") {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return children;
 };
 
@@ -1335,13 +1411,13 @@ const App = () => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = JSON.parse(localStorage.getItem('user') || 'null');
-    
+    const token = localStorage.getItem("token");
+    const userData = JSON.parse(localStorage.getItem("user") || "null");
+
     if (token && userData) {
       setUser(userData);
     }
-    
+
     setLoading(false);
   }, []);
 
@@ -1358,7 +1434,7 @@ const App = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/admin-signup" element={<AdminSignUp />} />
       <Route path="/student-signup" element={<StudentSignUp />} />
-      
+
       <Route
         path="/dashboard"
         element={
@@ -1367,7 +1443,7 @@ const App = () => {
           </ProtectedRoute>
         }
       />
-      
+
       <Route
         path="/Administrator"
         element={
@@ -1376,7 +1452,7 @@ const App = () => {
           </AdminRoute>
         }
       />
-      
+
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
