@@ -1,7 +1,7 @@
-const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
-const Message = require('./models/Message');
-const User = require('./models/User');
+import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
+import Message from './models/Message.js';
+import User from './models/User.js';
 
 const setupSocket = (server) => {
   const io = new Server(server, {
@@ -251,4 +251,4 @@ const setupSocket = (server) => {
   return io;
 };
 
-module.exports = setupSocket;
+export default setupSocket;

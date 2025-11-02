@@ -1,8 +1,9 @@
-const express = require('express');
+import express from 'express';
+import auth from '../middlewares/auth.js';
+import { requireRole } from '../middlewares/roles.js';
+import { getMe, getTeamMembers, getAdminStats, getAdminByTeamId, updateProfile, deleteStudent, updateStudentStatus } from '../controllers/user.controller.js';
+
 const router = express.Router();
-const auth = require('../middlewares/auth');
-const { requireRole } = require('../middlewares/roles');
-const { getMe, getTeamMembers, getAdminStats, getAdminByTeamId, updateProfile, deleteStudent, updateStudentStatus } = require('../controllers/user.controller');
 
 router.get('/me', auth, getMe);
 router.put('/me', auth, updateProfile); // Update current user's profile
@@ -14,5 +15,5 @@ router.get('/admins/team/:teamId', getAdminByTeamId); // Public endpoint for sig
 router.delete('/admins/students/:studentId', auth, requireRole('admin'), deleteStudent);
 router.put('/admins/students/:studentId/status', auth, requireRole('admin'), updateStudentStatus);
 
-module.exports = router;
+export default router;
 
