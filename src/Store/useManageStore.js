@@ -3,52 +3,9 @@ import { persist, createJSONStorage } from "zustand/middleware";
 const useManageStore = create(
   persist(
     (set, get) => ({
-      // Initial directory data - IDs as numbers for consistency, added missing fields like phone, location, bio, startDate, studentId for completeness
-      directory: [
-        {
-          id: 1,
-          name: "Julius Dagana",
-          email: "julius@example.com",
-          phone: "+233 24 123 4567",
-          location: "Accra, Ghana",
-          role: "Student",
-          github: "juliusdagana",
-          linkedin: "juliusdagana",
-          cohort: "2024-B",
-          studentId: "S001", // Added for profile completeness
-          bio: "Full-stack developer in training with a passion for building web applications.",
-          startDate: "August 2024", // Added for profile completeness
-          pictureUrl:
-            "https://via.placeholder.com/150x150/4F46E5/FFFFFF?text=JD",
-        },
-        {
-          id: 2,
-          name: "Admin",
-          email: "admin@gradea.com",
-          role: "Administrator",
-          github: "admin",
-          cohort: "Staff",
-          pictureUrl: "",
-        },
-        {
-          id: 3,
-          name: "Instructor Smith",
-          email: "smith@example.com",
-          role: "Instructor",
-          github: "smith",
-          specialty: "Web Development",
-          pictureUrl: "",
-        },
-        {
-          id: 4,
-          name: "TA John",
-          email: "john@example.com",
-          role: "Teaching Assistant",
-          github: "johnTA",
-          cohort: "2024-A",
-          pictureUrl: "",
-        },
-      ],
+      // Directory data loaded from API - no hardcoded users
+      directory: [],
+      setDirectory: (directory) => set({ directory }),
       // Friend requests state
       friendRequests: [],
       sendFriendRequest: (fromId, toId) => {

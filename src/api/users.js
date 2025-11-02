@@ -25,5 +25,15 @@ export const usersAPI = {
     const response = await apiClient.put('/users/me', data);
     return response.data;
   },
+
+  deleteStudent: async (studentId) => {
+    const response = await apiClient.delete(`/users/admins/students/${studentId}`);
+    return response.data;
+  },
+
+  updateStudentStatus: async (studentId, status) => {
+    const response = await apiClient.put(`/users/admins/students/${studentId}/status`, { status });
+    return response.data;
+  },
 };
 

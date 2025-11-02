@@ -55,7 +55,7 @@ exports.getTeamMembers = async (req, res) => {
     
     // Get all students assigned to this admin
     const students = await User.find({ adminId, role: 'student' })
-      .select('_id name email profileImage createdAt role studentId')
+      .select('_id name email profileImage createdAt role studentId status')
       .sort({ createdAt: -1 });
 
     // Return admin first, then students
@@ -157,6 +157,85 @@ exports.updateProfile = async (req, res) => {
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+// Delete student (admin only)
+exports.deleteStudent = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { studentId } = req.params;
+
+    // Verify student exists and belongs to this admin
+    const student = await User.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    if (student.role !== 'student') {
+      return res.status(400).json({ message: 'User is not a student' });
+    }
+
+    if (student.adminId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Student does not belong to your team' });
+    }
+
+    // Delete the student
+    await User.findByIdAndDelete(studentId);
+
+    res.json({ message: 'Student deleted successfully' });
+  } catch (error) {
+    console.error('Delete student error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Suspend/Unsuspend student (admin only)
+exports.updateStudentStatus = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { studentId } = req.params;
+    const { status } = req.body;
+
+    if (!['active', 'suspended'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status. Must be "active" or "suspended"' });
+    }
+
+    // Verify student exists and belongs to this admin
+    const student = await User.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    if (student.role !== 'student') {
+      return res.status(400).json({ message: 'User is not a student' });
+    }
+
+    if (student.adminId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Student does not belong to your team' });
+    }
+
+    // Update student status
+    student.status = status;
+    await student.save();
+
+    // Return updated student
+    const updatedStudent = await User.findById(studentId)
+      .select('_id name email profileImage createdAt role studentId status');
+
+    res.json({
+      message: `Student ${status === 'suspended' ? 'suspended' : 'activated'} successfully`,
+      student: updatedStudent,
+    });
+  } catch (error) {
+    console.error('Update student status error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

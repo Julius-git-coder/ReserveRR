@@ -142,52 +142,51 @@ const Directory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [directory, setDirectory] = useState([]);
+  const [loading, setLoading] = useState(true);
   const {
-    directory: storeDirectory,
     friendRequests,
     sendFriendRequest,
     addNotification,
+    setDirectory: setStoreDirectory,
   } = useManageStore();
-  const currentUser = { id: 1, name: "Julius Dagana" };
-  // FIXED FALLBACK: Trigger if empty array or null/undefined
-  const fallbackDirectory = [
-    {
-      id: 1,
-      name: "Julius Dagana",
-      email: "julius@example.com",
-      role: "Student",
-      github: "juliusdagana",
-      cohort: "2024-B",
-    },
-    {
-      id: 2,
-      name: "Admin",
-      email: "admin@gradea.com",
-      role: "Administrator",
-      github: "admin",
-      cohort: "Staff",
-    },
-    {
-      id: 3,
-      name: "Instructor Smith",
-      email: "smith@example.com",
-      role: "Instructor",
-      github: "smith",
-      specialty: "Web Development",
-    },
-    {
-      id: 4,
-      name: "TA John",
-      email: "john@example.com",
-      role: "Teaching Assistant",
-      github: "johnTA",
-      cohort: "2024-A",
-    },
-  ];
-  const directory =
-    storeDirectory && storeDirectory.length > 0
-      ? storeDirectory
-      : fallbackDirectory;
+  
+  // Get current user from localStorage
+  const currentUserData = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentUser = {
+    id: currentUserData.id || currentUserData._id,
+    name: currentUserData.name,
+  };
+
+  // Load directory from API
+  useEffect(() => {
+    const loadDirectory = async () => {
+      try {
+        setLoading(true);
+        const { usersAPI } = await import('../src/api/users');
+        const teamMembers = await usersAPI.getTeamMembers();
+        // Format team members to match directory structure
+        const formattedDirectory = (teamMembers || []).map(member => ({
+          id: member._id || member.id,
+          _id: member._id || member.id,
+          name: member.name,
+          email: member.email,
+          role: member.role === 'admin' ? 'Administrator' : 'Student',
+          profileImage: member.profileImage,
+          studentId: member.studentId,
+          status: member.status,
+        }));
+        setDirectory(formattedDirectory);
+        setStoreDirectory(formattedDirectory);
+      } catch (error) {
+        console.error('Error loading directory:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDirectory();
+  }, [setStoreDirectory]);
   // Memoized derived state
   const friends = useMemo(
     () =>
