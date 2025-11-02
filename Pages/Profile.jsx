@@ -47,6 +47,7 @@ const Profile = ({ onLogout }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
   // Get user data from localStorage or API
@@ -112,7 +113,10 @@ const Profile = ({ onLogout }) => {
   };
 
   const handleSave = async () => {
+    if (saving) return; // Prevent multiple simultaneous saves
+    
     try {
+      setSaving(true);
       // Update profile via API
       const updatedUser = await usersAPI.updateProfile({
         name: userProfile.name,
@@ -125,6 +129,9 @@ const Profile = ({ onLogout }) => {
     } catch (error) {
       console.error('Error saving profile:', error);
       alert("Failed to save profile. Please try again.");
+      // Keep edit mode open if save fails so user can retry
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -142,9 +149,10 @@ const Profile = ({ onLogout }) => {
     }
   };
 
-  const handleEditToggle = () => {
+  const handleEditToggle = async () => {
     if (isEditing) {
-      handleSave(); // Auto-save on toggle out of edit mode
+      // Await the save operation before toggling edit mode
+      await handleSave();
     } else {
       setIsEditing(true);
     }
@@ -189,9 +197,17 @@ const Profile = ({ onLogout }) => {
         <div className="flex items-center space-x-3">
           <button
             onClick={handleEditToggle}
-            className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-6 py-2 rounded-lg font-semibold transition-colors flex items-center space-x-2"
+            disabled={saving}
+            className={`bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-6 py-2 rounded-lg font-semibold transition-colors flex items-center space-x-2 ${
+              saving ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
           >
-            {isEditing ? (
+            {saving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : isEditing ? (
               <>
                 <Save className="w-4 h-4" />
                 <span>Save Changes</span>
