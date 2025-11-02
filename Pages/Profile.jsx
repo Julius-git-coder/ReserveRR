@@ -1,5 +1,5 @@
-// Fixed Profile.jsx - Use directory and updateUser for consistency with admin uploads
-import React, { useState, useMemo } from "react";
+// Fixed Profile.jsx - Use actual user data from localStorage/API
+import React, { useState, useEffect } from "react";
 import {
   User,
   Mail,
@@ -14,7 +14,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import useManageStore from "../src/Store/useManageStore"; // Adjust path if needed
+import { usersAPI } from "../src/api/users";
 
 const uploadToCloudinary = async (file) => {
   const cloudName = "dpttonwcs"; // Replace with your Cloudinary cloud name
@@ -45,17 +45,45 @@ const uploadToCloudinary = async (file) => {
 const Profile = ({ onLogout }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const { directory, updateUser } = useManageStore();
-  const studentId = 1; // Fixed: Use number for consistency with store IDs
-  const studentProfile = useMemo(
-    () => directory.find((u) => u.id === studentId),
-    [directory]
-  );
-
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Get user data from localStorage or API
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        // First try to get from localStorage
+        const localUser = JSON.parse(localStorage.getItem('user') || 'null');
+        
+        if (localUser) {
+          // Use local user data, but fetch fresh data from API if available
+          try {
+            const apiUser = await usersAPI.getMe();
+            setUserProfile(apiUser);
+            // Update localStorage with fresh data
+            localStorage.setItem('user', JSON.stringify(apiUser));
+          } catch (error) {
+            // If API fails, use local storage data
+            console.error('Failed to fetch user data:', error);
+            setUserProfile(localUser);
+          }
+        } else {
+          // No user data, redirect to login
+          navigate('/login');
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserProfile();
+  }, [navigate]);
+
   const handleChange = (field, value) => {
-    updateUser(studentId, { [field]: value });
+    setUserProfile((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleImageUpload = async (e) => {
@@ -65,25 +93,45 @@ const Profile = ({ onLogout }) => {
       return;
     }
 
-    const imageUrl = await uploadToCloudinary(file);
-    if (imageUrl) {
-      updateUser(studentId, { pictureUrl: imageUrl });
-      // Clear the input
-      e.target.value = "";
-      alert("Profile picture updated successfully!");
-    } else {
-      alert("Failed to upload image. Please try again.");
+    try {
+      const imageUrl = await uploadToCloudinary(file);
+      if (imageUrl) {
+        // Update via API
+        const updatedUser = await usersAPI.updateProfile({ profileImage: imageUrl });
+        setUserProfile(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        e.target.value = "";
+        alert("Profile picture updated successfully!");
+      } else {
+        alert("Failed to upload image. Please try again.");
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert("Failed to update profile picture. Please try again.");
     }
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // Optional: Show success toast instead of alert
-    alert("Profile saved successfully!");
+  const handleSave = async () => {
+    try {
+      // Update profile via API
+      const updatedUser = await usersAPI.updateProfile({
+        name: userProfile.name,
+        email: userProfile.email,
+      });
+      setUserProfile(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setIsEditing(false);
+      alert("Profile saved successfully!");
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert("Failed to save profile. Please try again.");
+    }
   };
 
   const handleLogout = () => {
     if (showConfirm) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       if (onLogout) onLogout();
       navigate("/login");
       setShowConfirm(false);
@@ -101,6 +149,35 @@ const Profile = ({ onLogout }) => {
       setIsEditing(true);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 p-6 flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!userProfile) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded">
+          Unable to load profile. Please try logging in again.
+        </div>
+      </div>
+    );
+  }
+
+  // Only show profile for students
+  if (userProfile.role !== 'student') {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="bg-yellow-900 border border-yellow-700 text-yellow-100 px-4 py-3 rounded">
+          This profile page is for students only.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -147,9 +224,9 @@ const Profile = ({ onLogout }) => {
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <div className="flex flex-col items-center">
               <div className="relative mb-4 group">
-                {studentProfile?.pictureUrl ? (
+                {userProfile?.profileImage ? (
                   <img
-                    src={studentProfile.pictureUrl}
+                    src={userProfile.profileImage}
                     alt="Profile Picture"
                     className="w-32 h-32 rounded-full object-cover border-2 border-gray-600 group-hover:border-yellow-500 transition-colors cursor-pointer"
                   />
@@ -171,23 +248,11 @@ const Profile = ({ onLogout }) => {
                 )}
               </div>
               <h2 className="text-white text-xl font-bold mb-1">
-                {studentProfile?.name || "Unknown User"}
+                {userProfile?.name || "Unknown User"}
               </h2>
               <span className="bg-yellow-500 text-gray-900 px-3 py-1 rounded-full text-xs font-semibold mb-4">
-                {studentProfile?.cohort || "N/A"}
+                {userProfile?.studentId || "N/A"}
               </span>
-              <p className="text-gray-400 text-center text-sm mb-4">
-                {studentProfile?.bio || "No bio available"}
-              </p>
-              <div className="w-full space-y-2">
-                <div className="flex items-center justify-center space-x-2 text-gray-400 text-sm">
-                  <MapPin className="w-4 h-4" />
-                  <span>{studentProfile?.location || "Not specified"}</span>
-                </div>
-                <div className="flex items-center justify-center space-x-2 text-gray-400 text-sm">
-                  <span>Joined {studentProfile?.startDate || "N/A"}</span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -206,14 +271,14 @@ const Profile = ({ onLogout }) => {
                   {isEditing ? (
                     <input
                       type="text"
-                      value={studentProfile?.name || ""}
+                      value={userProfile?.name || ""}
                       onChange={(e) => handleChange("name", e.target.value)}
                       className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none focus:border-yellow-500"
                     />
                   ) : (
                     <div className="flex items-center space-x-2 text-white">
                       <User className="w-4 h-4 text-gray-400" />
-                      <span>{studentProfile?.name || "Not set"}</span>
+                      <span>{userProfile?.name || "Not set"}</span>
                     </div>
                   )}
                 </div>
@@ -225,14 +290,14 @@ const Profile = ({ onLogout }) => {
                   {isEditing ? (
                     <input
                       type="email"
-                      value={studentProfile?.email || ""}
+                      value={userProfile?.email || ""}
                       onChange={(e) => handleChange("email", e.target.value)}
                       className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none focus:border-yellow-500"
                     />
                   ) : (
                     <div className="flex items-center space-x-2 text-white">
                       <Mail className="w-4 h-4 text-gray-400" />
-                      <span>{studentProfile?.email || "Not set"}</span>
+                      <span>{userProfile?.email || "Not set"}</span>
                     </div>
                   )}
                 </div>
@@ -241,153 +306,22 @@ const Profile = ({ onLogout }) => {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-2">
-                    Phone Number
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="tel"
-                      value={studentProfile?.phone || ""}
-                      onChange={(e) => handleChange("phone", e.target.value)}
-                      className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none focus:border-yellow-500"
-                    />
-                  ) : (
-                    <div className="flex items-center space-x-2 text-white">
-                      <Phone className="w-4 h-4 text-gray-400" />
-                      <span>{studentProfile?.phone || "Not set"}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">
                     Student ID
                   </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={studentProfile?.studentId || ""}
-                      onChange={(e) =>
-                        handleChange("studentId", e.target.value)
-                      }
-                      className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none focus:border-yellow-500"
-                    />
-                  ) : (
-                    <div className="flex items-center space-x-2 text-white">
-                      <GraduationCap className="w-4 h-4 text-gray-400" />
-                      <span>{studentProfile?.studentId || "Not set"}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">
-                    Cohort
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={studentProfile?.cohort || ""}
-                      onChange={(e) => handleChange("cohort", e.target.value)}
-                      className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none focus:border-yellow-500"
-                    />
-                  ) : (
-                    <div className="flex items-center space-x-2 text-white">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      <span>{studentProfile?.cohort || "Not set"}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">
-                    Location
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={studentProfile?.location || ""}
-                      onChange={(e) => handleChange("location", e.target.value)}
-                      className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none focus:border-yellow-500"
-                    />
-                  ) : (
-                    <div className="flex items-center space-x-2 text-white">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      <span>{studentProfile?.location || "Not set"}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">Bio</label>
-                {isEditing ? (
-                  <textarea
-                    value={studentProfile?.bio || ""}
-                    onChange={(e) => handleChange("bio", e.target.value)}
-                    className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none focus:border-yellow-500 resize-none"
-                    rows="3"
-                  />
-                ) : (
-                  <p className="text-white">
-                    {studentProfile?.bio || "No bio available"}
+                  <div className="flex items-center space-x-2 text-white">
+                    <GraduationCap className="w-4 h-4 text-gray-400" />
+                    <span>{userProfile?.studentId || "Not assigned"}</span>
+                  </div>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Student ID is auto-generated and cannot be changed
                   </p>
-                )}
+                </div>
+
               </div>
+
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mt-6">
-            <h3 className="text-white text-lg font-semibold mb-6">
-              Social Links
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">
-                  GitHub Username
-                </label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={studentProfile?.github || ""}
-                    onChange={(e) => handleChange("github", e.target.value)}
-                    className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none focus:border-yellow-500"
-                  />
-                ) : (
-                  <div className="flex items-center space-x-2 text-white">
-                    <Github className="w-4 h-4 text-gray-400" />
-                    <span>
-                      {studentProfile?.github
-                        ? `github.com/${studentProfile.github}`
-                        : "Not set"}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">
-                  LinkedIn Username
-                </label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={studentProfile?.linkedin || ""}
-                    onChange={(e) => handleChange("linkedin", e.target.value)}
-                    className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 outline-none focus:border-yellow-500"
-                  />
-                ) : (
-                  <div className="flex items-center space-x-2 text-white">
-                    <Linkedin className="w-4 h-4 text-gray-400" />
-                    <span>
-                      {studentProfile?.linkedin
-                        ? `linkedin.com/in/${studentProfile.linkedin}`
-                        : "Not set"}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

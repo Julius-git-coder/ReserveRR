@@ -309,17 +309,35 @@ const TeamMessaging = () => {
     </div>
   );
 };
-// Fixed Private Messaging Section - Now local-only, filters full conversations (sent + received) with selected student
+// Fixed Private Messaging Section - Now uses API to get real students with studentId
 const PrivateMessaging = () => {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [privateMessage, setPrivateMessage] = useState("");
   const [privateMessages, setPrivateMessages] = useState([]);
-  const { directory, conversations, addMessage } = useManageStore();
+  const [loading, setLoading] = useState(true);
+  const { conversations, addMessage } = useManageStore();
+  
   useEffect(() => {
-    // Use directory as students
-    const studentList = directory.filter((u) => u.role === "Student");
-    setStudents(studentList);
+    const loadStudents = async () => {
+      try {
+        setLoading(true);
+        // Get team members from API
+        const teamMembers = await usersAPI.getTeamMembers();
+        // Filter out admin (admin's role is 'admin', students' role is 'student')
+        const studentList = (teamMembers || []).filter(
+          (m) => m.role === "student"
+        );
+        setStudents(studentList);
+      } catch (error) {
+        console.error("Error loading students:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadStudents();
+    
     // Listen to store changes for private messages
     const unsubscribe = useManageStore.subscribe(
       (state) => state.conversations,
@@ -329,17 +347,22 @@ const PrivateMessaging = () => {
       }
     );
     return unsubscribe;
-  }, [directory]);
+  }, []);
   const handleSendPrivateMessage = (e) => {
     e.preventDefault();
     if (privateMessage.trim() && selectedStudent) {
       const timestamp = new Date().toISOString();
       const messageId = Date.now().toString();
-      // Local addMessage
+      // Get current admin user ID from localStorage
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const adminId = currentUser.id || currentUser._id;
+      const studentId = selectedStudent.id || selectedStudent._id;
+      
+      // Local addMessage using MongoDB _id (stored as id or _id)
       addMessage(
-        2,
-        selectedStudent.id,
-        2,
+        adminId,
+        studentId,
+        adminId,
         privateMessage,
         timestamp,
         messageId
@@ -349,25 +372,25 @@ const PrivateMessaging = () => {
       alert("Please select a student and enter a message.");
     }
   };
+  
   // Fixed filter: Show full conversation (sent to student OR received from student)
   const filteredMessages = selectedStudent
-    ? privateMessages.filter(
-        (msg) =>
-          (msg.senderId === 2 &&
-            conversations[
-              [
-                Math.min(2, selectedStudent.id),
-                Math.max(2, selectedStudent.id),
-              ].join("-")
-            ]?.some((m) => m.id === msg.id)) ||
-          (msg.senderId === selectedStudent.id &&
-            conversations[
-              [
-                Math.min(2, selectedStudent.id),
-                Math.max(2, selectedStudent.id),
-              ].join("-")
-            ]?.some((m) => m.id === msg.id))
-      )
+    ? privateMessages.filter((msg) => {
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const adminId = currentUser.id || currentUser._id;
+        const studentId = selectedStudent.id || selectedStudent._id;
+        const convKey = [
+          Math.min(adminId, studentId),
+          Math.max(adminId, studentId),
+        ].join("-");
+        
+        return (
+          (msg.senderId === adminId &&
+            conversations[convKey]?.some((m) => m.id === msg.id)) ||
+          (msg.senderId === studentId &&
+            conversations[convKey]?.some((m) => m.id === msg.id))
+        );
+      })
     : [];
   return (
     <div className="mt-8">
@@ -375,28 +398,35 @@ const PrivateMessaging = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <h3 className="text-white font-semibold mb-4">Select Student</h3>
-          <select
-            onChange={(e) => {
-              const student = students.find(
-                (s) => s.id === parseInt(e.target.value)
-              );
-              setSelectedStudent(student);
-            }}
-            className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
-          >
-            <option value="">Choose a student</option>
-            {students.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.email}
-              </option>
-            ))}
-          </select>
+          {loading ? (
+            <div className="text-gray-400">Loading students...</div>
+          ) : (
+            <select
+              onChange={(e) => {
+                const student = students.find(
+                  (s) => (s.id || s._id) === e.target.value
+                );
+                setSelectedStudent(student);
+              }}
+              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
+            >
+              <option value="">Choose a student</option>
+              {students.map((student) => (
+                <option key={student.id || student._id} value={student.id || student._id}>
+                  {student.name} ({student.email}) - {student.studentId || 'N/A'}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         {selectedStudent && (
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h3 className="text-white font-semibold mb-4">
-              Message {selectedStudent.email}
+            <h3 className="text-white font-semibold mb-2">
+              Message {selectedStudent.name}
             </h3>
+            <p className="text-gray-400 text-sm mb-4">
+              {selectedStudent.email} - {selectedStudent.studentId || 'N/A'}
+            </p>
             <form onSubmit={handleSendPrivateMessage}>
               <div className="flex space-x-2 mb-4">
                 <input
