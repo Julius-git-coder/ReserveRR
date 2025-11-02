@@ -1,6 +1,7 @@
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 const { Readable } = require('stream');
+const User = require('../models/User');
 
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
@@ -31,7 +32,38 @@ exports.uploadFile = async (req, res) => {
       return res.status(400).json({ message: 'No file provided' });
     }
 
-    const folder = `teams/${req.user.teamId}`;
+    // Determine teamId based on user role
+    // req.user is populated by auth middleware with full user object
+    let teamId;
+    if (req.user.role === 'admin') {
+      // Admin has teamId directly
+      teamId = req.user.teamId;
+    } else if (req.user.role === 'student') {
+      // Student - get teamId from their admin
+      // req.user.adminId should already be populated by auth middleware
+      if (!req.user.adminId) {
+        return res.status(403).json({ message: 'Invalid user configuration: student missing adminId' });
+      }
+      
+      const admin = await User.findById(req.user.adminId).select('teamId role');
+      if (!admin || admin.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin not found or invalid' });
+      }
+      
+      if (!admin.teamId) {
+        return res.status(403).json({ message: 'Admin team ID not configured' });
+      }
+      
+      teamId = admin.teamId;
+    } else {
+      return res.status(403).json({ message: 'Invalid user role' });
+    }
+
+    if (!teamId) {
+      return res.status(400).json({ message: 'Unable to determine team ID' });
+    }
+
+    const folder = `teams/${teamId}`;
     
     // Convert buffer to stream
     const stream = cloudinary.uploader.upload_stream(
