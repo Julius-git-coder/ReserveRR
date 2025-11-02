@@ -57,11 +57,25 @@ export const uploadFile = async (req, res) => {
     // req.user is populated by auth middleware with full user object
     let teamId;
     if (req.user.role === 'admin') {
-      // Admin has teamId directly
-      teamId = req.user.teamId;
+      // Admin has teamId directly - try both _id and direct property access
+      teamId = req.user.teamId || req.user.get?.('teamId');
+      
+      // If still no teamId, try to fetch fresh from database
+      if (!teamId) {
+        console.warn('Admin user missing teamId in req.user, fetching from database:', req.user._id);
+        const freshAdmin = await User.findById(req.user._id).select('teamId');
+        if (freshAdmin && freshAdmin.teamId) {
+          teamId = freshAdmin.teamId;
+          console.log('Retrieved teamId from database:', teamId);
+        }
+      }
+      
       if (!teamId) {
         console.error('Admin user missing teamId:', req.user._id);
-        return res.status(400).json({ message: 'Admin team ID not configured' });
+        return res.status(400).json({ 
+          message: 'Admin team ID not configured. Please contact support.',
+          userId: req.user._id.toString()
+        });
       }
     } else if (req.user.role === 'student') {
       // Student - get teamId from their admin
@@ -147,10 +161,18 @@ export const uploadFile = async (req, res) => {
     });
   } catch (error) {
     console.error('Upload error:', error);
+    console.error('Upload error stack:', error.stack);
+    console.error('Upload error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+    });
+    
     if (!res.headersSent) {
       res.status(500).json({ 
         message: 'Server error during upload',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
       });
     }
   }
