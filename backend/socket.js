@@ -69,7 +69,7 @@ const setupSocket = (server) => {
     // Handle sending messages
     socket.on('send_message', async (payload) => {
       try {
-        const { receiverId, isTeamChat, content, fileUrl } = payload;
+        const { receiverId, isTeamChat, content, fileUrl, messageType } = payload;
 
         // Validation
         if (!content && !fileUrl) {
@@ -103,6 +103,7 @@ const setupSocket = (server) => {
             receiverId: null,
             adminId,
             isTeamChat: true,
+            messageType: messageType || 'General',
             content: content || null,
             fileUrl: fileUrl || null,
           });
@@ -124,6 +125,7 @@ const setupSocket = (server) => {
             receiverId: null,
             adminId: populatedMessage.adminId.toString(),
             isTeamChat: true,
+            messageType: populatedMessage.messageType || 'General',
             content: populatedMessage.content,
             fileUrl: populatedMessage.fileUrl,
             createdAt: populatedMessage.createdAt,
@@ -146,6 +148,7 @@ const setupSocket = (server) => {
             receiverId: null,
             adminId,
             isTeamChat: false,
+            messageType: messageType || 'General',
             content: content || null,
             fileUrl: fileUrl || null,
           });
@@ -167,6 +170,7 @@ const setupSocket = (server) => {
             receiverId: null,
             adminId: populatedMessage.adminId.toString(),
             isTeamChat: false,
+            messageType: populatedMessage.messageType || 'General',
             content: populatedMessage.content,
             fileUrl: populatedMessage.fileUrl,
             createdAt: populatedMessage.createdAt,
@@ -202,6 +206,7 @@ const setupSocket = (server) => {
           receiverId,
           adminId,
           isTeamChat: false,
+          messageType: messageType || 'Direct',
           content: content || null,
           fileUrl: fileUrl || null,
         });
@@ -229,6 +234,7 @@ const setupSocket = (server) => {
           } : null,
           adminId: populatedMessage.adminId.toString(),
           isTeamChat: false,
+          messageType: populatedMessage.messageType || 'Direct',
           content: populatedMessage.content,
           fileUrl: populatedMessage.fileUrl,
           createdAt: populatedMessage.createdAt,
@@ -247,6 +253,39 @@ const setupSocket = (server) => {
       console.log(`User disconnected: ${user.name}`);
     });
   });
+
+  // Function to emit profile updates (called from user controller)
+  const emitProfileUpdate = (updatedUser, adminId) => {
+    // Emit to user's personal room
+    io.to(`user:${updatedUser._id.toString()}`).emit('profile_updated', {
+      user: {
+        id: updatedUser._id.toString(),
+        name: updatedUser.name,
+        email: updatedUser.email,
+        profileImage: updatedUser.profileImage,
+        role: updatedUser.role,
+        studentId: updatedUser.studentId || null,
+        teamId: updatedUser.teamId || null,
+      },
+    });
+
+    // Emit to team room for real-time updates across the system
+    if (adminId) {
+      io.to(`team:${adminId.toString()}`).emit('team_member_updated', {
+        user: {
+          id: updatedUser._id.toString(),
+          name: updatedUser.name,
+          email: updatedUser.email,
+          profileImage: updatedUser.profileImage,
+          role: updatedUser.role,
+          studentId: updatedUser.studentId || null,
+        },
+      });
+    }
+  };
+
+  // Make emitProfileUpdate available globally (attach to io object)
+  io.emitProfileUpdate = emitProfileUpdate;
 
   return io;
 };
