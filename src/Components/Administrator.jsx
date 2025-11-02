@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Users,
   BookOpen,
@@ -1203,23 +1203,73 @@ const Administrator = () => {
     const count = directory.filter((u) => u.role === "Student").length;
     setStudentCount(count);
   }, [directory]);
+  const { socket, isConnected } = useSocket();
+
   // Load admin profile from API on mount
-  useEffect(() => {
-    const loadAdminProfile = async () => {
-      try {
-        const userData = await usersAPI.getMe();
-        // Map profileImage to pictureUrl for compatibility with existing code
-        setAdminProfile({ ...userData, pictureUrl: userData.profileImage });
-      } catch (error) {
-        console.error("Error loading admin profile:", error);
-        // Fallback to directory if API fails
-        const admin = directory.find((u) => u.id === 2);
+  const loadAdminProfile = useCallback(async () => {
+    try {
+      const userData = await usersAPI.getMe();
+      // Map profileImage to pictureUrl for compatibility with existing code
+      const profileData = {
+        ...userData,
+        pictureUrl: userData.profileImage,
+        id: userData.id || userData._id,
+        _id: userData.id || userData._id,
+      };
+      setAdminProfile(profileData);
+      // Update localStorage with fresh data
+      localStorage.setItem('user', JSON.stringify(userData));
+    } catch (error) {
+      console.error("Error loading admin profile:", error);
+      // Fallback to directory if API fails
+      const admin = directory.find((u) => u.id === 2);
+      if (admin) {
         setAdminProfile(admin);
       }
-    };
-    
-    loadAdminProfile();
+    }
   }, [directory]);
+
+  useEffect(() => {
+    loadAdminProfile();
+  }, [loadAdminProfile]);
+
+  // Listen for real-time profile updates via socket.io
+  useEffect(() => {
+    if (!socket || !isConnected || !loadAdminProfile) return;
+
+    const handleProfileUpdate = (data) => {
+      const updatedUser = data.user;
+      const localCurrentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Update if it's the current admin user
+      if (updatedUser.id === (localCurrentUser.id || localCurrentUser._id)) {
+        const updatedCurrentUser = { ...localCurrentUser, ...updatedUser };
+        localStorage.setItem('user', JSON.stringify(updatedCurrentUser));
+        
+        // Update admin profile with new data
+        const updatedProfile = {
+          ...updatedUser,
+          pictureUrl: updatedUser.profileImage,
+          id: updatedUser.id,
+          _id: updatedUser.id,
+        };
+        setAdminProfile(updatedProfile);
+      }
+    };
+
+    const handleTeamMemberUpdate = (data) => {
+      // Reload admin profile when team members update (to refresh directory)
+      loadAdminProfile();
+    };
+
+    socket.on('profile_updated', handleProfileUpdate);
+    socket.on('team_member_updated', handleTeamMemberUpdate);
+
+    return () => {
+      socket.off('profile_updated', handleProfileUpdate);
+      socket.off('team_member_updated', handleTeamMemberUpdate);
+    };
+  }, [socket, isConnected, loadAdminProfile]);
   const handleBellClick = () => {
     setIsNotificationOpen(true);
   };
@@ -1994,19 +2044,28 @@ const Administrator = () => {
       
       // Update local storage with new user data
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      localStorage.setItem('user', JSON.stringify({ ...currentUser, profileImage: url }));
+      const updatedCurrentUser = { ...currentUser, ...updatedUser, profileImage: url };
+      localStorage.setItem('user', JSON.stringify(updatedCurrentUser));
       
       // Also update the local store for immediate UI update
-      updateUser(2, { pictureUrl: url });
+      const currentUserId = currentUser.id || currentUser._id;
+      if (currentUserId) {
+        updateUser(currentUserId, { pictureUrl: url, profileImage: url });
+      }
       
-      // Refresh admin profile from API
-      const userData = await usersAPI.getMe();
-      setAdminProfile({ ...userData, pictureUrl: userData.profileImage });
+      // Update admin profile state immediately
+      const profileData = {
+        ...updatedUser,
+        pictureUrl: updatedUser.profileImage || url,
+        id: updatedUser.id || updatedUser._id,
+        _id: updatedUser.id || updatedUser._id,
+      };
+      setAdminProfile(profileData);
       
       alert("Profile picture updated successfully!");
     } catch (error) {
       console.error("Error uploading profile image:", error);
-      alert("Failed to upload image. Please try again.");
+      alert(error.response?.data?.message || "Failed to upload image. Please try again.");
     }
     
     e.target.value = "";
