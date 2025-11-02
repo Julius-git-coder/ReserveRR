@@ -18,6 +18,7 @@ exports.getMe = async (req, res) => {
       responseUser.teamId = user.teamId;
     } else if (user.role === 'student') {
       responseUser.adminId = user.adminId.toString();
+      responseUser.studentId = user.studentId || null; // Include studentId
       // Get admin's teamId for display
       const admin = await User.findById(user.adminId);
       if (admin) {
@@ -54,7 +55,7 @@ exports.getTeamMembers = async (req, res) => {
     
     // Get all students assigned to this admin
     const students = await User.find({ adminId, role: 'student' })
-      .select('_id name email profileImage createdAt role')
+      .select('_id name email profileImage createdAt role studentId')
       .sort({ createdAt: -1 });
 
     // Return admin first, then students
@@ -145,6 +146,7 @@ exports.updateProfile = async (req, res) => {
       responseUser.teamId = user.teamId;
     } else if (user.role === 'student') {
       responseUser.adminId = user.adminId.toString();
+      responseUser.studentId = user.studentId || null; // Include studentId
       const admin = await User.findById(user.adminId);
       if (admin) {
         responseUser.teamId = admin.teamId;

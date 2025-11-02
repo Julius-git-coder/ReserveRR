@@ -100,16 +100,20 @@ exports.studentSignup = async (req, res) => {
 
     const token = generateToken(user._id);
 
+    // Fetch the user again to get the generated studentId
+    const savedUser = await User.findById(user._id);
+
     res.status(201).json({
       token,
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        adminId: user.adminId.toString(),
+        id: savedUser._id,
+        name: savedUser.name,
+        email: savedUser.email,
+        role: savedUser.role,
+        adminId: savedUser.adminId.toString(),
+        studentId: savedUser.studentId || null, // Include auto-generated studentId
         teamId: admin.teamId, // Return admin's teamId for display
-        profileImage: user.profileImage,
+        profileImage: savedUser.profileImage,
       },
     });
   } catch (error) {
@@ -154,6 +158,7 @@ exports.login = async (req, res) => {
       responseUser.teamId = user.teamId;
     } else if (user.role === 'student') {
       responseUser.adminId = user.adminId.toString();
+      responseUser.studentId = user.studentId || null; // Include studentId
       // Get admin's teamId for display
       const admin = await User.findById(user.adminId);
       if (admin) {
