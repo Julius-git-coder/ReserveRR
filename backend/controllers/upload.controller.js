@@ -28,14 +28,29 @@ export const uploadMiddleware = upload.single('file');
 // Upload handler
 export const uploadFile = async (req, res) => {
   try {
+    console.log('Upload request received');
+    console.log('User:', req.user ? { id: req.user._id, role: req.user.role, teamId: req.user.teamId } : 'Not found');
+    
     if (!req.file) {
+      console.error('No file in request');
       return res.status(400).json({ message: 'No file provided' });
     }
 
+    console.log('File received:', { 
+      originalname: req.file.originalname, 
+      mimetype: req.file.mimetype, 
+      size: req.file.size 
+    });
+
     // Check if Cloudinary is configured
-    if (!process.env.CLOUD_NAME || !process.env.CLOUD_API_KEY || !process.env.CLOUD_API_SECRET) {
-      console.error('Cloudinary configuration missing');
-      return res.status(500).json({ message: 'File upload service not configured' });
+    const hasCloudinary = !!(process.env.CLOUD_NAME && process.env.CLOUD_API_KEY && process.env.CLOUD_API_SECRET);
+    if (!hasCloudinary) {
+      console.error('Cloudinary configuration missing. Checked:', {
+        CLOUD_NAME: !!process.env.CLOUD_NAME,
+        CLOUD_API_KEY: !!process.env.CLOUD_API_KEY,
+        CLOUD_API_SECRET: !!process.env.CLOUD_API_SECRET,
+      });
+      return res.status(500).json({ message: 'File upload service not configured. Please check server configuration.' });
     }
 
     // Determine teamId based on user role
@@ -78,8 +93,10 @@ export const uploadFile = async (req, res) => {
 
     const folder = `teams/${teamId}`;
     
-    // Convert buffer to stream
+    // Convert buffer to stream and upload to Cloudinary
     return new Promise((resolve, reject) => {
+      let responseSent = false;
+      
       const stream = cloudinary.uploader.upload_stream(
         {
           folder,
@@ -88,8 +105,9 @@ export const uploadFile = async (req, res) => {
         (error, result) => {
           if (error) {
             console.error('Cloudinary upload error:', error);
-            if (!res.headersSent) {
-              return res.status(500).json({ 
+            if (!responseSent && !res.headersSent) {
+              responseSent = true;
+              res.status(500).json({ 
                 message: 'File upload failed',
                 error: process.env.NODE_ENV === 'development' ? error.message : undefined
               });
@@ -97,7 +115,8 @@ export const uploadFile = async (req, res) => {
             return reject(error);
           }
           
-          if (!res.headersSent) {
+          if (!responseSent && !res.headersSent && result) {
+            responseSent = true;
             res.json({ url: result.secure_url });
           }
           resolve(result);
@@ -110,8 +129,18 @@ export const uploadFile = async (req, res) => {
       
       readable.on('error', (error) => {
         console.error('Stream error:', error);
-        if (!res.headersSent) {
+        if (!responseSent && !res.headersSent) {
+          responseSent = true;
           res.status(500).json({ message: 'Error processing file' });
+        }
+        reject(error);
+      });
+      
+      stream.on('error', (error) => {
+        console.error('Cloudinary stream error:', error);
+        if (!responseSent && !res.headersSent) {
+          responseSent = true;
+          res.status(500).json({ message: 'Error uploading to cloud storage' });
         }
         reject(error);
       });
