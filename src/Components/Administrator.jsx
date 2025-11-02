@@ -22,6 +22,8 @@ import {
   Settings,
 } from "lucide-react";
 import useManageStore from "../Store/useManageStore";
+import { usersAPI } from "../api/users";
+import { uploadsAPI } from "../api/uploads";
 
 // Updated Sessions Management Section Component
 const SessionsManagement = ({
@@ -884,9 +886,22 @@ const Administrator = () => {
     const count = directory.filter((u) => u.role === "Student").length;
     setStudentCount(count);
   }, [directory]);
+  // Load admin profile from API on mount
   useEffect(() => {
-    const admin = directory.find((u) => u.id === 2);
-    setAdminProfile(admin);
+    const loadAdminProfile = async () => {
+      try {
+        const userData = await usersAPI.getMe();
+        // Map profileImage to pictureUrl for compatibility with existing code
+        setAdminProfile({ ...userData, pictureUrl: userData.profileImage });
+      } catch (error) {
+        console.error("Error loading admin profile:", error);
+        // Fallback to directory if API fails
+        const admin = directory.find((u) => u.id === 2);
+        setAdminProfile(admin);
+      }
+    };
+    
+    loadAdminProfile();
   }, [directory]);
   const handleBellClick = () => {
     setIsNotificationOpen(true);
@@ -1652,13 +1667,31 @@ const Administrator = () => {
       alert("Please select a valid image file.");
       return;
     }
-    const imageUrl = await uploadToCloudinary(file);
-    if (imageUrl) {
-      updateUser(2, { pictureUrl: imageUrl });
+
+    try {
+      // Upload file to backend (which handles Cloudinary)
+      const { url } = await uploadsAPI.uploadFile(file);
+      
+      // Update user profile with the image URL
+      const updatedUser = await usersAPI.updateProfile({ profileImage: url });
+      
+      // Update local storage with new user data
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      localStorage.setItem('user', JSON.stringify({ ...currentUser, profileImage: url }));
+      
+      // Also update the local store for immediate UI update
+      updateUser(2, { pictureUrl: url });
+      
+      // Refresh admin profile from API
+      const userData = await usersAPI.getMe();
+      setAdminProfile({ ...userData, pictureUrl: userData.profileImage });
+      
       alert("Profile picture updated successfully!");
-    } else {
+    } catch (error) {
+      console.error("Error uploading profile image:", error);
       alert("Failed to upload image. Please try again.");
     }
+    
     e.target.value = "";
   };
   const handleEditEvent = (event) => {

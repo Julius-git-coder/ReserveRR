@@ -108,3 +108,53 @@ exports.getAdminByTeamId = async (req, res) => {
   }
 };
 
+// Update user profile (including profileImage)
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, email, profileImage } = req.body;
+    const userId = req.user.id;
+
+    // Build update object
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (profileImage !== undefined) updateData.profileImage = profileImage;
+
+    // Update user
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Build response similar to getMe
+    let responseUser = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      profileImage: user.profileImage,
+      createdAt: user.createdAt,
+    };
+
+    if (user.role === 'admin') {
+      responseUser.teamId = user.teamId;
+    } else if (user.role === 'student') {
+      responseUser.adminId = user.adminId.toString();
+      const admin = await User.findById(user.adminId);
+      if (admin) {
+        responseUser.teamId = admin.teamId;
+      }
+    }
+
+    res.json(responseUser);
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
