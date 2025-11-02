@@ -1,6 +1,6 @@
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 
 // Generate JWT token
 const generateToken = (id) => {
@@ -8,7 +8,7 @@ const generateToken = (id) => {
 };
 
 // Admin signup
-exports.adminSignup = async (req, res) => {
+export const adminSignup = async (req, res) => {
   try {
     const { name, email, password, teamId, profileImage } = req.body;
 
@@ -63,7 +63,7 @@ exports.adminSignup = async (req, res) => {
 };
 
 // Student signup
-exports.studentSignup = async (req, res) => {
+export const studentSignup = async (req, res) => {
   try {
     const { name, email, password, adminId, profileImage } = req.body;
 
@@ -123,7 +123,7 @@ exports.studentSignup = async (req, res) => {
 };
 
 // Login
-exports.login = async (req, res) => {
+export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 

@@ -1,7 +1,7 @@
-const multer = require('multer');
-const cloudinary = require('../config/cloudinary');
-const { Readable } = require('stream');
-const User = require('../models/User');
+import multer from 'multer';
+import cloudinary from '../config/cloudinary.js';
+import { Readable } from 'stream';
+import User from '../models/User.js';
 
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
@@ -23,10 +23,10 @@ const upload = multer({
 });
 
 // Upload middleware
-exports.uploadMiddleware = upload.single('file');
+export const uploadMiddleware = upload.single('file');
 
 // Upload handler
-exports.uploadFile = async (req, res) => {
+export const uploadFile = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No file provided' });

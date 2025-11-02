@@ -1,8 +1,8 @@
-const Message = require('../models/Message');
-const User = require('../models/User');
+import Message from '../models/Message.js';
+import User from '../models/User.js';
 
 // Get team chat messages (team chat room)
-exports.getTeamChatMessages = async (req, res) => {
+export const getTeamChatMessages = async (req, res) => {
   try {
     let adminId;
     
@@ -36,7 +36,7 @@ exports.getTeamChatMessages = async (req, res) => {
 };
 
 // Get broadcast messages (admin to all team students)
-exports.getTeamBroadcastMessages = async (req, res) => {
+export const getTeamBroadcastMessages = async (req, res) => {
   try {
     let adminId;
     
@@ -68,7 +68,7 @@ exports.getTeamBroadcastMessages = async (req, res) => {
 };
 
 // Get direct messages with a user
-exports.getDirectMessages = async (req, res) => {
+export const getDirectMessages = async (req, res) => {
   try {
     const { userId: otherUserId } = req.params;
     const currentUserId = req.user.id;
@@ -122,7 +122,7 @@ exports.getDirectMessages = async (req, res) => {
 };
 
 // Send a message (for REST API, Socket.io handles real-time)
-exports.sendMessage = async (req, res) => {
+export const sendMessage = async (req, res) => {
   try {
     const { receiverId, isTeamChat, content, fileUrl } = req.body;
     const senderId = req.user.id;
@@ -228,7 +228,7 @@ exports.sendMessage = async (req, res) => {
 };
 
 // Admin broadcast message (to all team students)
-exports.broadcastMessage = async (req, res) => {
+export const broadcastMessage = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });

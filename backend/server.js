@@ -1,9 +1,9 @@
-const express = require('express');
-const http = require('http');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const connectDB = require('./config/db');
-const setupSocket = require('./socket');
+import express from 'express';
+import http from 'http';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import connectDB from './config/db.js';
+import setupSocket from './socket.js';
 
 // Load environment variables
 dotenv.config();
@@ -24,10 +24,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api/auth', require('./routes/auth.routes'));
-app.use('/api/users', require('./routes/user.routes'));
-app.use('/api/messages', require('./routes/message.routes'));
-app.use('/api/uploads', require('./routes/upload.routes'));
+import authRoutes from './routes/auth.routes.js';
+import userRoutes from './routes/user.routes.js';
+import messageRoutes from './routes/message.routes.js';
+import uploadRoutes from './routes/upload.routes.js';
+
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/uploads', uploadRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
