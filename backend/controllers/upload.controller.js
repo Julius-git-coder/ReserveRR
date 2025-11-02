@@ -32,25 +32,38 @@ export const uploadFile = async (req, res) => {
       return res.status(400).json({ message: 'No file provided' });
     }
 
+    // Check if Cloudinary is configured
+    if (!process.env.CLOUD_NAME || !process.env.CLOUD_API_KEY || !process.env.CLOUD_API_SECRET) {
+      console.error('Cloudinary configuration missing');
+      return res.status(500).json({ message: 'File upload service not configured' });
+    }
+
     // Determine teamId based on user role
     // req.user is populated by auth middleware with full user object
     let teamId;
     if (req.user.role === 'admin') {
       // Admin has teamId directly
       teamId = req.user.teamId;
+      if (!teamId) {
+        console.error('Admin user missing teamId:', req.user._id);
+        return res.status(400).json({ message: 'Admin team ID not configured' });
+      }
     } else if (req.user.role === 'student') {
       // Student - get teamId from their admin
       // req.user.adminId should already be populated by auth middleware
       if (!req.user.adminId) {
+        console.error('Student user missing adminId:', req.user._id);
         return res.status(403).json({ message: 'Invalid user configuration: student missing adminId' });
       }
       
       const admin = await User.findById(req.user.adminId).select('teamId role');
       if (!admin || admin.role !== 'admin') {
+        console.error('Admin not found for student:', req.user._id, req.user.adminId);
         return res.status(403).json({ message: 'Admin not found or invalid' });
       }
       
       if (!admin.teamId) {
+        console.error('Admin missing teamId:', admin._id);
         return res.status(403).json({ message: 'Admin team ID not configured' });
       }
       
@@ -66,26 +79,51 @@ export const uploadFile = async (req, res) => {
     const folder = `teams/${teamId}`;
     
     // Convert buffer to stream
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: 'auto', // Auto-detect file type
-      },
-      (error, result) => {
-        if (error) {
-          console.error('Cloudinary upload error:', error);
-          return res.status(500).json({ message: 'File upload failed' });
+    return new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          resource_type: 'auto', // Auto-detect file type
+        },
+        (error, result) => {
+          if (error) {
+            console.error('Cloudinary upload error:', error);
+            if (!res.headersSent) {
+              return res.status(500).json({ 
+                message: 'File upload failed',
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+              });
+            }
+            return reject(error);
+          }
+          
+          if (!res.headersSent) {
+            res.json({ url: result.secure_url });
+          }
+          resolve(result);
         }
-        
-        res.json({ url: result.secure_url });
-      }
-    );
+      );
 
-    // Pipe buffer to stream
-    Readable.from(req.file.buffer).pipe(stream);
+      // Pipe buffer to stream
+      const readable = Readable.from(req.file.buffer);
+      readable.pipe(stream);
+      
+      readable.on('error', (error) => {
+        console.error('Stream error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ message: 'Error processing file' });
+        }
+        reject(error);
+      });
+    });
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ message: 'Server error during upload' });
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        message: 'Server error during upload',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
   }
 };
 
