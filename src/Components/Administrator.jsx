@@ -4642,7 +4642,7 @@ const Administrator = () => {
           {/* New Team and Private Messaging Sections */}
           <TeamMessaging />
           <PrivateMessaging />
-          {showSettings && <AdminSettings onClose={() => setShowSettings(false)} />}
+          {showSettings && <AdminSettings />}
           {isChatOpen && selectedUser && (
             <ChatModal
               onClose={() => setIsChatOpen(false)}
