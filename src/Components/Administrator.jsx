@@ -311,8 +311,8 @@ const TeamMessaging = () => {
     </div>
   );
 };
-// Admin Settings Component - Delete and Suspend Students
-const AdminSettings = () => {
+// Admin Settings Component - Delete and Suspend Students (Side Modal)
+const AdminSettings = ({ onClose }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState({});
@@ -399,71 +399,93 @@ const AdminSettings = () => {
   };
 
   return (
-    <div className="mt-8">
-      <h2 className="text-white text-2xl font-bold mb-6">Student Management</h2>
-      {loading ? (
-        <div className="text-gray-400">Loading students...</div>
-      ) : students.length === 0 ? (
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <p className="text-gray-400">No students in your team yet.</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-end">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
+        onClick={onClose}
+      />
+      
+      {/* Side Modal */}
+      <div className="relative bg-gray-800 w-full max-w-2xl h-full overflow-y-auto shadow-2xl transform transition-transform duration-300 ease-out">
+        {/* Header */}
+        <div className="sticky top-0 bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between z-10">
+          <h2 className="text-white text-2xl font-bold">Student Management</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
-      ) : (
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left text-gray-400 font-semibold p-3">Name</th>
-                  <th className="text-left text-gray-400 font-semibold p-3">Email</th>
-                  <th className="text-left text-gray-400 font-semibold p-3">Student ID</th>
-                  <th className="text-left text-gray-400 font-semibold p-3">Status</th>
-                  <th className="text-left text-gray-400 font-semibold p-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((student) => (
-                  <tr key={student.id || student._id} className="border-b border-gray-700 hover:bg-gray-700">
-                    <td className="p-3 text-white">{student.name}</td>
-                    <td className="p-3 text-gray-300">{student.email}</td>
-                    <td className="p-3 text-gray-300">{student.studentId || 'N/A'}</td>
-                    <td className="p-3">
-                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                        student.status === 'suspended' 
-                          ? 'bg-red-500 bg-opacity-20 text-red-400' 
-                          : 'bg-green-500 bg-opacity-20 text-green-400'
-                      }`}>
-                        {student.status === 'suspended' ? 'Suspended' : 'Active'}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleSuspendStudent(student.id || student._id, student.status || 'active')}
-                          disabled={actionLoading[student.id || student._id] === 'suspend'}
-                          className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
-                            student.status === 'suspended'
-                              ? 'bg-green-600 hover:bg-green-700 text-white'
-                              : 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                          } disabled:opacity-50`}
-                        >
-                          {actionLoading[student.id || student._id] === 'suspend' ? 'Processing...' : student.status === 'suspended' ? 'Activate' : 'Suspend'}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteStudent(student.id || student._id)}
-                          disabled={actionLoading[student.id || student._id] === 'delete'}
-                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-semibold transition-colors disabled:opacity-50"
-                        >
-                          {actionLoading[student.id || student._id] === 'delete' ? 'Deleting...' : 'Delete'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+        {/* Content */}
+        <div className="p-6">
+          {loading ? (
+            <div className="text-gray-400 text-center py-8">Loading students...</div>
+          ) : students.length === 0 ? (
+            <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
+              <p className="text-gray-400 text-center">No students in your team yet.</p>
+            </div>
+          ) : (
+            <div className="bg-gray-700 rounded-lg border border-gray-600 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-800">
+                    <tr className="border-b border-gray-600">
+                      <th className="text-left text-gray-300 font-semibold p-3">Name</th>
+                      <th className="text-left text-gray-300 font-semibold p-3">Email</th>
+                      <th className="text-left text-gray-300 font-semibold p-3">Student ID</th>
+                      <th className="text-left text-gray-300 font-semibold p-3">Status</th>
+                      <th className="text-left text-gray-300 font-semibold p-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {students.map((student) => (
+                      <tr key={student.id || student._id} className="border-b border-gray-600 hover:bg-gray-600 transition-colors">
+                        <td className="p-3 text-white">{student.name}</td>
+                        <td className="p-3 text-gray-300">{student.email}</td>
+                        <td className="p-3 text-gray-300">{student.studentId || 'N/A'}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            student.status === 'suspended' 
+                              ? 'bg-red-500 bg-opacity-20 text-red-400' 
+                              : 'bg-green-500 bg-opacity-20 text-green-400'
+                          }`}>
+                            {student.status === 'suspended' ? 'Suspended' : 'Active'}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleSuspendStudent(student.id || student._id, student.status || 'active')}
+                              disabled={actionLoading[student.id || student._id] === 'suspend'}
+                              className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+                                student.status === 'suspended'
+                                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                                  : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                              } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                              {actionLoading[student.id || student._id] === 'suspend' ? 'Processing...' : student.status === 'suspended' ? 'Activate' : 'Suspend'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStudent(student.id || student._id)}
+                              disabled={actionLoading[student.id || student._id] === 'delete'}
+                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {actionLoading[student.id || student._id] === 'delete' ? 'Deleting...' : 'Delete'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
