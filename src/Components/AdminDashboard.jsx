@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, MessageSquare, Send, User, AlertCircle, Loader } from 'lucide-react';
+import { Users, MessageSquare, Send, User, AlertCircle, Loader, Copy, Check, Key } from 'lucide-react';
 import { usersAPI } from '../api/users';
 import { messagesAPI } from '../api/messages';
 import ChatWindow from './ChatWindow';
@@ -13,6 +13,7 @@ const AdminDashboard = () => {
   const [showTeamChat, setShowTeamChat] = useState(false);
   const [broadcastContent, setBroadcastContent] = useState('');
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
+  const [copied, setCopied] = useState(false);
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const { socket, isConnected } = useSocket();
 
@@ -60,6 +61,14 @@ const AdminDashboard = () => {
     }
   };
 
+  const copyTeamId = () => {
+    if (currentUser.teamId) {
+      navigator.clipboard.writeText(currentUser.teamId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -72,8 +81,42 @@ const AdminDashboard = () => {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <h1 className="text-white text-3xl font-bold mb-2">Admin Dashboard</h1>
-        <p className="text-gray-400">Manage your team and communicate with students</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-white text-3xl font-bold mb-2">Admin Dashboard</h1>
+            <p className="text-gray-400">Manage your team and communicate with students</p>
+          </div>
+          {/* Team ID Display - Prominent */}
+          <div className="bg-yellow-500 bg-opacity-10 border border-yellow-500 rounded-lg p-4 min-w-[280px]">
+            <div className="flex items-center space-x-2 mb-2">
+              <Key className="w-5 h-5 text-yellow-500" />
+              <span className="text-yellow-500 font-semibold text-sm">Your Team ID</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <code className="text-white font-bold text-xl flex-1 bg-gray-900 px-3 py-2 rounded">
+                {currentUser.teamId || 'N/A'}
+              </code>
+              <button
+                onClick={copyTeamId}
+                className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-3 py-2 rounded-lg font-semibold transition-colors flex items-center space-x-2"
+                title="Copy Team ID"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span className="text-xs">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span className="text-xs">Copy</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <p className="text-gray-400 text-xs mt-2">Share this ID with students to join your team</p>
+          </div>
+        </div>
       </div>
 
       {/* Stats */}
