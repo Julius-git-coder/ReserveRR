@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { authAPI } from "../src/api/auth";
+import { usersAPI } from "../src/api/users";
 
 const StudentSignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -87,11 +88,14 @@ const StudentSignUp = () => {
     }
 
     try {
+      // First, get admin by teamId
+      const admin = await usersAPI.getAdminByTeamId(formData.teamId);
+      
       const signupData = {
         name: formData.fullName,
         email: formData.email,
         password: formData.password,
-        teamId: formData.teamId,
+        adminId: admin.id, // Use adminId from the API response
         profileImage: null,
       };
 

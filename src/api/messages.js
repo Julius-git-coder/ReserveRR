@@ -1,8 +1,13 @@
 import apiClient from './client';
 
 export const messagesAPI = {
-  getTeamMessages: async (teamId) => {
-    const response = await apiClient.get(`/messages/team/${teamId}`);
+  getTeamChatMessages: async () => {
+    const response = await apiClient.get('/messages/team/chat');
+    return response.data;
+  },
+
+  getTeamBroadcastMessages: async () => {
+    const response = await apiClient.get('/messages/team/broadcast');
     return response.data;
   },
 

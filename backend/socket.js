@@ -27,11 +27,20 @@ const setupSocket = (server) => {
         return next(new Error('Authentication error'));
       }
 
+      // Determine adminId
+      let adminId;
+      if (user.role === 'admin') {
+        adminId = user._id.toString();
+      } else {
+        adminId = user.adminId ? user.adminId.toString() : null;
+      }
+
       socket.user = {
         id: user._id.toString(),
         email: user.email,
         role: user.role,
-        teamId: user.teamId,
+        adminId: adminId,
+        teamId: user.teamId || null, // Only for admins
         name: user.name,
       };
       
@@ -43,10 +52,16 @@ const setupSocket = (server) => {
 
   io.on('connection', (socket) => {
     const user = socket.user;
-    console.log(`User connected: ${user.name} (${user.role}) - Team: ${user.teamId}`);
+    console.log(`User connected: ${user.name} (${user.role}) - AdminID: ${user.adminId}`);
 
-    // Join team room for broadcasts
-    socket.join(`team:${user.teamId}`);
+    if (!user.adminId) {
+      socket.emit('error', { message: 'Invalid user configuration' });
+      socket.disconnect();
+      return;
+    }
+
+    // Join team chat room (based on adminId)
+    socket.join(`team:${user.adminId}`);
     
     // Join personal room for direct messages
     socket.join(`user:${user.id}`);
@@ -54,46 +69,148 @@ const setupSocket = (server) => {
     // Handle sending messages
     socket.on('send_message', async (payload) => {
       try {
-        const { receiverId, teamId, content, fileUrl } = payload;
+        const { receiverId, isTeamChat, content, fileUrl } = payload;
 
         // Validation
-        if (!teamId || (!content && !fileUrl)) {
-          socket.emit('error', { message: 'Team ID and content or file are required' });
+        if (!content && !fileUrl) {
+          socket.emit('error', { message: 'Content or file is required' });
           return;
         }
 
-        // Verify user belongs to this team
-        if (user.teamId !== teamId) {
-          socket.emit('error', { message: 'Access denied' });
+        const sender = await User.findById(user.id);
+        if (!sender) {
+          socket.emit('error', { message: 'Sender not found' });
           return;
         }
 
-        // If receiverId provided, verify receiver exists and is in same team
-        let receiver = null;
-        if (receiverId) {
-          receiver = await User.findById(receiverId);
-          if (!receiver || receiver.teamId !== teamId) {
-            socket.emit('error', { message: 'Invalid receiver' });
+        // Determine adminId for sender
+        let adminId;
+        if (sender.role === 'admin') {
+          adminId = sender._id;
+        } else {
+          adminId = sender.adminId;
+        }
+
+        if (!adminId || adminId.toString() !== user.adminId) {
+          socket.emit('error', { message: 'Invalid admin configuration' });
+          return;
+        }
+
+        // Handle team chat
+        if (isTeamChat) {
+          const message = await Message.create({
+            senderId: user.id,
+            receiverId: null,
+            adminId,
+            isTeamChat: true,
+            content: content || null,
+            fileUrl: fileUrl || null,
+          });
+
+          const populatedMessage = await Message.findById(message._id)
+            .populate('senderId', 'name email profileImage role')
+            .populate('receiverId', 'name email profileImage')
+            .lean();
+
+          const messageData = {
+            _id: populatedMessage._id,
+            senderId: {
+              _id: populatedMessage.senderId._id,
+              name: populatedMessage.senderId.name,
+              email: populatedMessage.senderId.email,
+              profileImage: populatedMessage.senderId.profileImage,
+              role: populatedMessage.senderId.role,
+            },
+            receiverId: null,
+            adminId: populatedMessage.adminId.toString(),
+            isTeamChat: true,
+            content: populatedMessage.content,
+            fileUrl: populatedMessage.fileUrl,
+            createdAt: populatedMessage.createdAt,
+          };
+
+          // Emit to entire team chat room
+          io.to(`team:${adminId.toString()}`).emit('new_message', messageData);
+          return;
+        }
+
+        // Handle broadcast (admin to all students)
+        if (!receiverId) {
+          if (user.role !== 'admin') {
+            socket.emit('error', { message: 'Only admins can broadcast' });
             return;
           }
+
+          const message = await Message.create({
+            senderId: user.id,
+            receiverId: null,
+            adminId,
+            isTeamChat: false,
+            content: content || null,
+            fileUrl: fileUrl || null,
+          });
+
+          const populatedMessage = await Message.findById(message._id)
+            .populate('senderId', 'name email profileImage role')
+            .populate('receiverId', 'name email profileImage')
+            .lean();
+
+          const messageData = {
+            _id: populatedMessage._id,
+            senderId: {
+              _id: populatedMessage.senderId._id,
+              name: populatedMessage.senderId.name,
+              email: populatedMessage.senderId.email,
+              profileImage: populatedMessage.senderId.profileImage,
+              role: populatedMessage.senderId.role,
+            },
+            receiverId: null,
+            adminId: populatedMessage.adminId.toString(),
+            isTeamChat: false,
+            content: populatedMessage.content,
+            fileUrl: populatedMessage.fileUrl,
+            createdAt: populatedMessage.createdAt,
+          };
+
+          // Emit to entire team (for broadcasts)
+          io.to(`team:${adminId.toString()}`).emit('new_message', messageData);
+          return;
         }
 
-        // Create message in database
+        // Handle direct message
+        const receiver = await User.findById(receiverId);
+        if (!receiver) {
+          socket.emit('error', { message: 'Receiver not found' });
+          return;
+        }
+
+        // Verify receiver is in same team
+        let receiverAdminId;
+        if (receiver.role === 'admin') {
+          receiverAdminId = receiver._id;
+        } else {
+          receiverAdminId = receiver.adminId;
+        }
+
+        if (!receiverAdminId || receiverAdminId.toString() !== adminId.toString()) {
+          socket.emit('error', { message: 'Users are not in the same team' });
+          return;
+        }
+
         const message = await Message.create({
           senderId: user.id,
-          receiverId: receiverId || null,
-          teamId,
+          receiverId,
+          adminId,
+          isTeamChat: false,
           content: content || null,
           fileUrl: fileUrl || null,
         });
 
-        // Populate message with user data
         const populatedMessage = await Message.findById(message._id)
-          .populate('senderId', 'name email profileImage')
-          .populate('receiverId', 'name email profileImage')
+          .populate('senderId', 'name email profileImage role')
+          .populate('receiverId', 'name email profileImage role')
           .lean();
 
-        // Convert to plain object for socket emission
         const messageData = {
           _id: populatedMessage._id,
           senderId: {
@@ -101,27 +218,24 @@ const setupSocket = (server) => {
             name: populatedMessage.senderId.name,
             email: populatedMessage.senderId.email,
             profileImage: populatedMessage.senderId.profileImage,
+            role: populatedMessage.senderId.role,
           },
           receiverId: populatedMessage.receiverId ? {
             _id: populatedMessage.receiverId._id,
             name: populatedMessage.receiverId.name,
             email: populatedMessage.receiverId.email,
             profileImage: populatedMessage.receiverId.profileImage,
+            role: populatedMessage.receiverId.role,
           } : null,
-          teamId: populatedMessage.teamId,
+          adminId: populatedMessage.adminId.toString(),
+          isTeamChat: false,
           content: populatedMessage.content,
           fileUrl: populatedMessage.fileUrl,
           createdAt: populatedMessage.createdAt,
         };
 
-        // Emit to appropriate recipients
-        if (!receiverId) {
-          // Broadcast to entire team
-          io.to(`team:${teamId}`).emit('new_message', messageData);
-        } else {
-          // Private message: send to receiver and sender
-          io.to(`user:${receiverId}`).to(`user:${user.id}`).emit('new_message', messageData);
-        }
+        // Emit to both sender and receiver for direct messages
+        io.to(`user:${receiverId}`).to(`user:${user.id}`).emit('new_message', messageData);
       } catch (error) {
         console.error('Send message error:', error);
         socket.emit('error', { message: 'Failed to send message' });
@@ -138,4 +252,3 @@ const setupSocket = (server) => {
 };
 
 module.exports = setupSocket;
-

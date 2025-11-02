@@ -65,11 +65,11 @@ exports.adminSignup = async (req, res) => {
 // Student signup
 exports.studentSignup = async (req, res) => {
   try {
-    const { name, email, password, teamId, profileImage } = req.body;
+    const { name, email, password, adminId, profileImage } = req.body;
 
     // Validation
-    if (!name || !email || !password || !teamId) {
-      return res.status(400).json({ message: 'Please provide all required fields' });
+    if (!name || !email || !password || !adminId) {
+      return res.status(400).json({ message: 'Please provide all required fields (name, email, password, adminId)' });
     }
 
     // Check if email already exists
@@ -78,23 +78,23 @@ exports.studentSignup = async (req, res) => {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
-    // Check if teamId exists (must have an admin with this teamId)
-    const adminWithTeamId = await User.findOne({ role: 'admin', teamId });
-    if (!adminWithTeamId) {
-      return res.status(400).json({ message: 'Invalid team ID. Please contact your admin.' });
+    // Check if adminId exists and is an admin
+    const admin = await User.findOne({ _id: adminId, role: 'admin' });
+    if (!admin) {
+      return res.status(400).json({ message: 'Invalid admin ID. Please contact your admin for the correct ID.' });
     }
 
     // Hash password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create student user
+    // Create student user with adminId reference
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
       role: 'student',
-      teamId,
+      adminId: admin._id,
       profileImage: profileImage || null,
     });
 
@@ -107,7 +107,8 @@ exports.studentSignup = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        teamId: user.teamId,
+        adminId: user.adminId.toString(),
+        teamId: admin.teamId, // Return admin's teamId for display
         profileImage: user.profileImage,
       },
     });
@@ -140,16 +141,29 @@ exports.login = async (req, res) => {
 
     const token = generateToken(user._id);
 
+    // Populate admin info if student
+    let responseUser = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      profileImage: user.profileImage,
+    };
+
+    if (user.role === 'admin') {
+      responseUser.teamId = user.teamId;
+    } else if (user.role === 'student') {
+      responseUser.adminId = user.adminId.toString();
+      // Get admin's teamId for display
+      const admin = await User.findById(user.adminId);
+      if (admin) {
+        responseUser.teamId = admin.teamId;
+      }
+    }
+
     res.json({
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        teamId: user.teamId,
-        profileImage: user.profileImage,
-      },
+      user: responseUser,
     });
   } catch (error) {
     console.error('Login error:', error);
