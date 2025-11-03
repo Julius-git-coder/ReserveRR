@@ -1329,6 +1329,7 @@ const Administrator = () => {
     (state) => state.markNotificationAsRead
   );
   const updateUser = useManageStore((state) => state.updateUser);
+  const { socket, isConnected } = useSocket();
   // Load students from API with real-time updates
   const loadStudents = useCallback(async () => {
     try {
@@ -1370,8 +1371,6 @@ const Administrator = () => {
       socket.off("team_member_updated", handleTeamMemberUpdate);
     };
   }, [socket, isConnected, loadStudents]);
-
-  const { socket, isConnected } = useSocket();
 
   // Load admin profile from API on mount
   const loadAdminProfile = useCallback(async () => {
