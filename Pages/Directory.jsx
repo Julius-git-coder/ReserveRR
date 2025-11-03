@@ -149,10 +149,11 @@ const Directory = () => {
     sendFriendRequest,
     addNotification,
     setDirectory: setStoreDirectory,
+    directory: storeDirectory, // FIXED: Destructure storeDirectory to fix ReferenceError
   } = useManageStore();
-  
+
   // Get current user from localStorage
-  const currentUserData = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentUserData = JSON.parse(localStorage.getItem("user") || "{}");
   const currentUser = {
     id: currentUserData.id || currentUserData._id,
     name: currentUserData.name,
@@ -163,15 +164,15 @@ const Directory = () => {
     const loadDirectory = async () => {
       try {
         setLoading(true);
-        const { usersAPI } = await import('../src/api/users');
+        const { usersAPI } = await import("../src/api/users");
         const teamMembers = await usersAPI.getTeamMembers();
         // Format team members to match directory structure
-        const formattedDirectory = (teamMembers || []).map(member => ({
+        const formattedDirectory = (teamMembers || []).map((member) => ({
           id: member._id || member.id,
           _id: member._id || member.id,
           name: member.name,
           email: member.email,
-          role: member.role === 'admin' ? 'Administrator' : 'Student',
+          role: member.role === "admin" ? "Administrator" : "Student",
           profileImage: member.profileImage,
           studentId: member.studentId,
           status: member.status,
@@ -179,7 +180,7 @@ const Directory = () => {
         setDirectory(formattedDirectory);
         setStoreDirectory(formattedDirectory);
       } catch (error) {
-        console.error('Error loading directory:', error);
+        console.error("Error loading directory:", error);
       } finally {
         setLoading(false);
       }

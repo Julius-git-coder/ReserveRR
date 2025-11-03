@@ -96,3 +96,15 @@ Frontend/
 │   │   └── api.js
 │   ├── App.jsx
 │   └── main.jsx
+
+
+
+<!-- my compus connect is working  -->
+<!-- the student profile is working  -->
+<!-- student directory when send request the other recipient don't see it  -->
+
+<!-- admin profile is not working -->
+<!-- fix the so that when the admin send any of the information the student is notified and can see it -->
+<!-- in admin dashboard fix the student directory so that only the currently available student appears there  -->
+<!-- fix so that when the student send anything to the admin the admin can see it and also notified -->
+ <!-- in the student mangement modal fix so that each user have  their respective profile   -->
