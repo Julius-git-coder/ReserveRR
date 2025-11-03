@@ -6047,6 +6047,7 @@ const Administrator = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [studentCount, setStudentCount] = useState(0);
   const [adminProfile, setAdminProfile] = useState(null);
+  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
   const [students, setStudents] = useState([]);
   const [studentsLoading, setStudentsLoading] = useState(true);
   const markAsRead = useManageStore((state) => state.markAsRead);
@@ -6056,6 +6057,7 @@ const Administrator = () => {
     (state) => state.markNotificationAsRead
   );
   const updateUser = useManageStore((state) => state.updateUser);
+  const { socket, isConnected } = useSocket();
   // Load students from API with real-time updates
   const loadStudents = useCallback(async () => {
     try {
