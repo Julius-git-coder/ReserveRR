@@ -237,47 +237,47 @@ const NotificationModal = ({
         alert("Session rejected. Please book a new one if needed.");
       }
     } else if (notif.type === "new_announcement") {
-      alert(`New announcement: Check the Announcements tab.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'announcements' }));
     } else if (notif.type === "new_assignment") {
-      alert(`New assignment added. Check Assignments.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'assignments' }));
     } else if (notif.type === "new_exercise") {
-      alert(`New exercise added. Check Exercises.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'exercises' }));
     } else if (notif.type === "new_project") {
-      alert(`New project added. Check Projects.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'projects' }));
     } else if (notif.type === "new_attendance") {
-      alert(`Attendance updated. Check Attendance.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'attendance' }));
     } else if (notif.type === "new_roadmap") {
-      alert(`New roadmap added. Check Roadmap.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'roadmap' }));
     } else if (notif.type === "new_week") {
-      alert(`New week added to roadmap. Check Roadmap.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'roadmap' }));
     } else if (notif.type === "new_subtopic") {
-      alert(`New subtopic added. Check Roadmap.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'roadmap' }));
     } else if (notif.type === "new_class_material") {
-      alert(`New class material added. Check Class Materials.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'materials' }));
     } else if (notif.type === "new_program") {
-      alert(`New program available. Check Available Programs.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'workready' }));
     } else if (notif.type === "new_milestone") {
-      alert(`New milestone added to program. Check Available Programs.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'workready' }));
     } else if (notif.type === "team_message") {
-      alert(`New team message from admin. Check notifications.`);
+      // Keep modal closed; stays on current page
     } else if (notif.type === "friend_request_received") {
-      alert(`New friend request received. Check Directory.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'directory' }));
     } else if (notif.type === "friend_request_accepted") {
-      alert(`Friend request accepted!`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'directory' }));
     } else if (notif.type === "friend_request_rejected") {
-      alert(`Friend request rejected.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'directory' }));
     } else if (notif.type === "program_join_approved") {
-      alert(`Program join request approved!`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'workready' }));
     } else if (notif.type === "program_join_rejected") {
-      alert(`Program join request rejected.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'workready' }));
     } else if (notif.type === "milestone_updated") {
-      alert(`Milestone status updated. Check Available Programs.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'workready' }));
     } else if (notif.type === "day_completed") {
-      alert(`Day completed! Great job!`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: '100days' }));
     } else if (notif.type === "session_booked") {
-      alert(`New session booked. Check Sessions Management.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'session' }));
     } else if (notif.type === "program_join_requested") {
-      alert(`New program join request. Check Programs.`);
+      window.dispatchEvent(new CustomEvent('open-tab', { detail: 'workready' }));
     }
   };
   return (
@@ -1125,6 +1125,12 @@ const Dashboard = () => {
     addMessage,
     setDirectory: setStoreDirectory,
   } = useManageStore();
+  const unreadCount = useManageStore(
+    (state) =>
+      state.notifications.filter(
+        (n) => n.userId === (currentUser?.id || currentUser?._id) && !n.read
+      ).length
+  );
 
   // Load user data and directory
   const loadData = useCallback(async () => {
@@ -1181,6 +1187,63 @@ const Dashboard = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Listen for real-time team/admin messages and push notifications
+  useEffect(() => {
+    if (!socket || !isConnected || !currentUser) return;
+
+    const mapTypeToNotif = (message) => {
+      const type = message.messageType;
+      const title = message.content || 'New update';
+      const base = {
+        id: Date.now(),
+        userId: currentUser.id || currentUser._id,
+        read: false,
+        timestamp: new Date().toISOString(),
+      };
+      switch (type) {
+        case 'Announcement':
+          return { ...base, type: 'new_announcement', message: title };
+        case 'Assignment':
+          return { ...base, type: 'new_assignment', message: title };
+        case 'Attendance':
+          return { ...base, type: 'new_attendance', message: title };
+        case 'Grading':
+          return { ...base, type: 'grading', message: title };
+        case 'ClassMaterials':
+          return { ...base, type: 'new_class_material', message: title };
+        case 'RoadMap':
+          return { ...base, type: 'new_roadmap', message: title };
+        case 'Project':
+          return { ...base, type: 'new_project', message: title };
+        case 'Exercise':
+          return { ...base, type: 'new_exercise', message: title };
+        case 'Directory':
+          return { ...base, type: 'team_message', message: title };
+        case 'BookSections':
+          return { ...base, type: 'team_message', message: title };
+        case 'WorkReady':
+          return { ...base, type: 'new_program', message: title };
+        case 'DaysOfLearning':
+          return { ...base, type: 'day_completed', message: title };
+        default:
+          return { ...base, type: 'team_message', message: title };
+      }
+    };
+
+    const handleNewMessage = (message) => {
+      // Only team broadcasts or team chat meant for this team arrive to this socket
+      if (message.isTeamChat || (!message.receiverId && !message.isTeamChat)) {
+        const notif = mapTypeToNotif(message);
+        addNotification(notif);
+      }
+    };
+
+    socket.on('new_message', handleNewMessage);
+    return () => {
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [socket, isConnected, currentUser, addNotification]);
 
   // Listen for real-time profile updates via socket.io
   useEffect(() => {
@@ -1289,6 +1352,18 @@ const Dashboard = () => {
         return <DashboardContent setActiveTab={setActiveTab} />;
     }
   };
+  
+  // Listen for notification-driven tab open events
+  useEffect(() => {
+    const handler = (e) => {
+      const tab = e.detail;
+      if (typeof tab === 'string') {
+        setActiveTab(tab);
+      }
+    };
+    window.addEventListener('open-tab', handler);
+    return () => window.removeEventListener('open-tab', handler);
+  }, []);
   return (
     <div className="flex h-screen bg-gray-900">
       {isMobileMenuOpen && (
@@ -1319,13 +1394,7 @@ const Dashboard = () => {
               >
                 <Bell className="w-6 h-6" />
                 <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center transform translate-x-1/2 -translate-y-1/2">
-                  {
-                    useManageStore
-                      .getState()
-                      .notifications.filter(
-                        (n) => n.userId === studentId && !n.read
-                      ).length
-                  }
+                  {unreadCount}
                 </span>
               </button>
               {/* Student profile picture shows here (Dashboard is student view) */}
