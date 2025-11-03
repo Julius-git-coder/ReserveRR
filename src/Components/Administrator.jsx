@@ -375,7 +375,7 @@
 //   const handleSuspendStudent = async (studentId, currentStatus) => {
 //     const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
 //     const action = newStatus === 'suspended' ? 'suspend' : 'activate';
-    
+
 //     if (!confirm(`Are you sure you want to ${action} this student?`)) {
 //       return;
 //     }
@@ -384,8 +384,8 @@
 //     try {
 //       const response = await usersAPI.updateStudentStatus(studentId, newStatus);
 //       // Update student in list
-//       setStudents(students.map(s => 
-//         (s.id || s._id) === studentId 
+//       setStudents(students.map(s =>
+//         (s.id || s._id) === studentId
 //           ? { ...s, status: newStatus }
 //           : s
 //       ));
@@ -401,13 +401,13 @@
 //   return (
 //     <div className="fixed inset-0 z-50">
 //       {/* Backdrop */}
-//       <div 
+//       <div
 //         className="absolute inset-0 bg-black bg-opacity-50 transition-opacity z-40"
 //         onClick={onClose}
 //       />
-      
+
 //       {/* Side Modal */}
-//       <div 
+//       <div
 //         className="absolute right-0 top-0 bottom-0 bg-gray-800 w-full max-w-2xl h-full overflow-y-auto shadow-2xl transform transition-transform duration-300 ease-out z-50"
 //         onClick={(e) => e.stopPropagation()}
 //       >
@@ -455,8 +455,8 @@
 //                         <td className="p-3 text-gray-300">{student.studentId || 'N/A'}</td>
 //                         <td className="p-3">
 //                           <span className={`px-2 py-1 rounded text-xs font-semibold ${
-//                             student.status === 'suspended' 
-//                               ? 'bg-red-500 bg-opacity-20 text-red-400' 
+//                             student.status === 'suspended'
+//                               ? 'bg-red-500 bg-opacity-20 text-red-400'
 //                               : 'bg-green-500 bg-opacity-20 text-green-400'
 //                           }`}>
 //                             {student.status === 'suspended' ? 'Suspended' : 'Active'}
@@ -509,7 +509,7 @@
 //   const [sending, setSending] = useState(false);
 //   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 //   const { socket, isConnected } = useSocket();
-  
+
 //   useEffect(() => {
 //     const loadStudents = async () => {
 //       try {
@@ -525,7 +525,7 @@
 //         setLoading(false);
 //       }
 //     };
-    
+
 //     loadStudents();
 //   }, []);
 
@@ -566,9 +566,9 @@
 //         // For direct messages, only accept messages between admin and selected student
 //         const studentId = selectedStudent.id || selectedStudent._id;
 //         const adminId = currentUser.id || currentUser._id;
-        
+
 //         const isDirectMessage = !message.isTeamChat && message.receiverId;
-//         const isToOrFromSelected = 
+//         const isToOrFromSelected =
 //           (message.senderId?._id === studentId || message.senderId?._id?.toString() === studentId) ||
 //           (message.receiverId?._id === studentId || message.receiverId?._id?.toString() === studentId);
 //         const isFromOrToAdmin =
@@ -628,7 +628,7 @@
 //       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 //         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
 //           <h3 className="text-white font-semibold mb-4">Message Type</h3>
-          
+
 //           {/* Message Category Selector */}
 //           <div className="mb-4">
 //             <label className="block text-gray-400 text-sm mb-2">Message Category</label>
@@ -664,7 +664,7 @@
 //               <option value="direct">Direct Message to Specific Student</option>
 //             </select>
 //           </div>
-          
+
 //           {messageType === 'direct' && (
 //             <>
 //               <h3 className="text-white font-semibold mb-4 mt-4">Select Student</h3>
@@ -693,12 +693,12 @@
 //             </>
 //           )}
 //         </div>
-        
+
 //         {(messageType === 'broadcast' || messageType === 'all_students' || selectedStudent) && (
 //           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
 //             <h3 className="text-white font-semibold mb-2">
-//               {messageType === 'broadcast' || messageType === 'all_students' 
-//                 ? `Send ${messageCategory} to ALL Students` 
+//               {messageType === 'broadcast' || messageType === 'all_students'
+//                 ? `Send ${messageCategory} to ALL Students`
 //                 : `Send ${messageCategory} to ${selectedStudent.name}`}
 //             </h3>
 //             {messageType === 'direct' && (
@@ -1240,12 +1240,12 @@
 //     const handleProfileUpdate = (data) => {
 //       const updatedUser = data.user;
 //       const localCurrentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      
+
 //       // Update if it's the current admin user
 //       if (updatedUser.id === (localCurrentUser.id || localCurrentUser._id)) {
 //         const updatedCurrentUser = { ...localCurrentUser, ...updatedUser };
 //         localStorage.setItem('user', JSON.stringify(updatedCurrentUser));
-        
+
 //         // Update admin profile with new data
 //         const updatedProfile = {
 //           ...updatedUser,
@@ -2046,25 +2046,25 @@
 //     try {
 //       // Upload file to backend (which handles Cloudinary)
 //       const { url } = await uploadsAPI.uploadFile(file);
-      
+
 //       if (!url) {
 //         throw new Error("Upload succeeded but no URL returned");
 //       }
-      
+
 //       // Update user profile with the image URL
 //       const updatedUser = await usersAPI.updateProfile({ profileImage: url });
-      
+
 //       // Update local storage with new user data
 //       const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 //       const updatedCurrentUser = { ...currentUser, ...updatedUser, profileImage: url };
 //       localStorage.setItem('user', JSON.stringify(updatedCurrentUser));
-      
+
 //       // Also update the local store for immediate UI update
 //       const currentUserId = currentUser.id || currentUser._id;
 //       if (currentUserId) {
 //         updateUser(currentUserId, { pictureUrl: url, profileImage: url });
 //       }
-      
+
 //       // Update admin profile state immediately
 //       const profileData = {
 //         ...updatedUser,
@@ -2073,18 +2073,18 @@
 //         _id: updatedUser.id || updatedUser._id,
 //       };
 //       setAdminProfile(profileData);
-      
+
 //       alert("Profile picture updated successfully!");
 //     } catch (error) {
 //       console.error("Error uploading profile image:", error);
-      
+
 //       // Provide user-friendly error messages
 //       let errorMessage = "Failed to upload image. Please try again.";
-      
+
 //       if (error.response) {
 //         const status = error.response.status;
 //         const data = error.response.data;
-        
+
 //         if (status === 500) {
 //           if (data?.message?.includes("Cloudinary") || data?.message?.includes("not configured")) {
 //             errorMessage = "File upload service is not configured. Please contact your system administrator to set up Cloudinary. Profile picture upload is temporarily unavailable.";
@@ -2105,7 +2105,7 @@
 //       } else if (error.message) {
 //         errorMessage = error.message;
 //       }
-      
+
 //       alert(errorMessage);
 //     } finally {
 //       e.target.value = "";
@@ -3099,7 +3099,7 @@
 //               <option value="program">New Program</option>
 //               <option value="milestone">New Milestone</option>
 //             </select>
-//             <button 
+//             <button
 //               onClick={() => setShowSettings(!showSettings)}
 //               className={`${showSettings ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900' : 'bg-gray-800 hover:bg-gray-700 text-white'} px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2 font-semibold`}
 //             >
@@ -6100,7 +6100,6 @@ const Administrator = () => {
     };
   }, [socket, isConnected, loadStudents]);
 
-  const { socket, isConnected } = useSocket();
   // Load admin profile from API on mount
   const loadAdminProfile = useCallback(async () => {
     try {
