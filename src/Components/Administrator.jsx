@@ -4746,8 +4746,7 @@
 //               )}
 //             </div>
 //           </div>
-//           {/* Private Messaging Section */}
-//           <PrivateMessaging />
+//           {/* Messaging removed */}
 //           {showSettings && <AdminSettings />}
 //           {isChatOpen && selectedUser && (
 //             <ChatModal
@@ -5241,213 +5240,7 @@ const AdminSettings = ({ onClose }) => {
     </div>
   );
 };
-// Fixed Private Messaging Section - Now uses real-time socket.io messaging
-const PrivateMessaging = () => {
-  const [students, setStudents] = useState([]);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [privateMessage, setPrivateMessage] = useState("");
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-  const { socket, isConnected } = useSocket();
-
-  useEffect(() => {
-    const loadStudents = async () => {
-      try {
-        setLoading(true);
-        const teamMembers = await usersAPI.getTeamMembers();
-        const studentList = (teamMembers || []).filter(
-          (m) => m.role === "student"
-        );
-        setStudents(studentList);
-      } catch (error) {
-        console.error("Error loading students:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadStudents();
-  }, []);
-  // Load messages when student is selected
-  useEffect(() => {
-    const loadMessages = async () => {
-      if (!selectedStudent) return;
-      try {
-        const data = await messagesAPI.getDirectMessages(
-          selectedStudent.id || selectedStudent._id
-        );
-        setMessages(data || []);
-      } catch (error) {
-        console.error("Error loading messages:", error);
-      }
-    };
-    loadMessages();
-  }, [selectedStudent]);
-  // Listen for real-time messages via socket.io
-  useEffect(() => {
-    if (!socket || !isConnected) return;
-    const handleNewMessage = (message) => {
-      if (selectedStudent) {
-        // Only accept direct messages between admin and selected student
-        const studentId = selectedStudent.id || selectedStudent._id;
-        const adminId = currentUser.id || currentUser._id;
-
-        const isDirectMessage = !message.isTeamChat && message.receiverId;
-        const isToOrFromSelected =
-          message.senderId?._id === studentId ||
-          message.senderId?._id?.toString() === studentId ||
-          message.receiverId?._id === studentId ||
-          message.receiverId?._id?.toString() === studentId;
-        const isFromOrToAdmin =
-          message.senderId?._id === adminId ||
-          message.senderId?._id?.toString() === adminId ||
-          message.receiverId?._id === adminId ||
-          message.receiverId?._id?.toString() === adminId;
-        if (isDirectMessage && isToOrFromSelected && isFromOrToAdmin) {
-          setMessages((prev) => [...prev, message]);
-          // If the admin is the receiver and the sender is a student, push a notification
-          try {
-            const senderRole = message?.senderId?.role;
-            const receiverIsAdmin =
-              message?.receiverId?._id?.toString() === adminId?.toString();
-            if (receiverIsAdmin && senderRole !== "admin") {
-              const addNotification = useManageStore.getState().addNotification;
-              addNotification({
-                id: Date.now(),
-                userId: adminId,
-                type: "message",
-                fromUserId: message?.senderId?._id?.toString(),
-                messageId: message?._id,
-                read: false,
-                timestamp: new Date().toISOString(),
-              });
-            }
-          } catch (e) {
-            // no-op
-          }
-        }
-      }
-    };
-    socket.on("new_message", handleNewMessage);
-    return () => {
-      socket.off("new_message", handleNewMessage);
-    };
-  }, [socket, isConnected, selectedStudent, currentUser]);
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!privateMessage.trim() || sending || !socket || !isConnected) return;
-    if (!selectedStudent) {
-      alert("Please select a student to send a message.");
-      return;
-    }
-    setSending(true);
-    try {
-      const messageData = {
-        receiverId: selectedStudent.id || selectedStudent._id,
-        isTeamChat: false,
-        content: privateMessage.trim(),
-        fileUrl: null,
-      };
-      socket.emit("send_message", messageData);
-      setPrivateMessage("");
-    } catch (error) {
-      console.error("Error sending message:", error);
-      alert("Failed to send message");
-    } finally {
-      setSending(false);
-    }
-  };
-  return (
-    <div className="mt-8">
-      <h2 className="text-white text-2xl font-bold mb-6">Messaging</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <h3 className="text-white font-semibold mb-4 mt-0">Select Student</h3>
-          {loading ? (
-            <div className="text-gray-400">Loading students...</div>
-          ) : (
-            <select
-              value={
-                selectedStudent ? selectedStudent.id || selectedStudent._id : ""
-              }
-              onChange={(e) => {
-                const student = students.find(
-                  (s) => (s.id || s._id) === e.target.value
-                );
-                setSelectedStudent(student);
-                setMessages([]);
-              }}
-              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
-            >
-              <option value="">Choose a student by ID</option>
-              {students.map((student) => (
-                <option
-                  key={student.id || student._id}
-                  value={student.id || student._id}
-                >
-                  {student.studentId || "N/A"} - {student.name} ({student.email})
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-
-        {selectedStudent && (
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h3 className="text-white font-semibold mb-2">Send message to {selectedStudent.name}</h3>
-            <p className="text-gray-400 text-sm mb-4">
-              Student ID: {selectedStudent.studentId || "N/A"} - {selectedStudent.email}
-            </p>
-            <form onSubmit={handleSendMessage}>
-              <div className="flex space-x-2 mb-4">
-                <input
-                  type="text"
-                  value={privateMessage}
-                  onChange={(e) => setPrivateMessage(e.target.value)}
-                  placeholder="Send private message..."
-                  disabled={!isConnected || sending}
-                  className="flex-1 bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 disabled:opacity-50"
-                />
-                <button
-                  type="submit"
-                  disabled={!privateMessage.trim() || sending || !isConnected}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
-                >
-                  {sending ? "Sending..." : "Send"}
-                </button>
-              </div>
-            </form>
-            <div className="space-y-2 max-h-60 overflow-y-auto border-t border-gray-700 pt-4 mt-4">
-              {messages.map((msg) => (
-                <div
-                  key={msg._id}
-                  className="text-sm text-gray-300 flex justify-between p-2 bg-gray-700 rounded"
-                >
-                  <span>{msg.content}</span>
-                  <span className="text-gray-500 text-xs">
-                    {new Date(msg.createdAt || msg.timestamp).toLocaleString()}
-                  </span>
-                </div>
-              ))}
-              {messages.length === 0 && (
-                <p className="text-gray-500 text-sm text-center py-4">
-                  No messages yet.
-                </p>
-              )}
-            </div>
-            {!isConnected && (
-              <p className="text-yellow-500 text-xs mt-2">
-                Connecting to server...
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
+// Messaging removed
 // New Roadmap Management Section Component
 const RoadmapManagement = ({
   roadmapItems,
@@ -9574,8 +9367,7 @@ const Administrator = () => {
               )}
             </div>
           </div>
-          {/* Private Messaging Section */}
-          <PrivateMessaging />
+          {/* Messaging removed */}
           {showSettings && (
             <AdminSettings onClose={() => setShowSettings(false)} />
           )}
