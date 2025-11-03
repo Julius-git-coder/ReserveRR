@@ -4746,8 +4746,7 @@
 //               )}
 //             </div>
 //           </div>
-//           {/* New Team and Private Messaging Sections */}
-//           <TeamMessaging />
+//           {/* Private Messaging Section */}
 //           <PrivateMessaging />
 //           {showSettings && <AdminSettings />}
 //           {isChatOpen && selectedUser && (
@@ -5017,72 +5016,6 @@ const SessionsManagement = ({
             })}
           </div>
         )}
-      </div>
-    </div>
-  );
-};
-// New Team Messaging Section - Local only
-const TeamMessaging = () => {
-  const [message, setMessage] = useState("");
-  const [teamMessages, setTeamMessages] = useState([]);
-  const addNotification = useManageStore((state) => state.addNotification);
-  const handleSendTeamMessage = (e) => {
-    e.preventDefault();
-    if (message.trim()) {
-      const timestamp = new Date().toISOString();
-      const messageId = Date.now().toString();
-      setTeamMessages((prev) => [
-        ...prev,
-        { id: messageId, message, timestamp },
-      ]);
-      // Notify all students
-      const state = useManageStore.getState();
-      const students = state.directory.filter((u) => u.role === "Student");
-      const newNotifs = students.map((student, index) => ({
-        id: Date.now() + index,
-        userId: student.id,
-        type: "team_message",
-        messageId,
-        message,
-        read: false,
-        timestamp,
-      }));
-      newNotifs.forEach((notif) => addNotification(notif));
-      setMessage("");
-    }
-  };
-  return (
-    <div className="mt-8">
-      <h2 className="text-white text-2xl font-bold mb-6">Team Messaging</h2>
-      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <form onSubmit={handleSendTeamMessage} className="mb-4">
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Send message to entire team..."
-              className="flex-1 bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
-            />
-            <button
-              type="submit"
-              className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg"
-            >
-              Send
-            </button>
-          </div>
-        </form>
-        <div className="space-y-2 max-h-40 overflow-y-auto">
-          {teamMessages
-            .sort((a, b) =>
-              new Date(a.timestamp) > new Date(b.timestamp) ? -1 : 1
-            )
-            .map((msg) => (
-              <div key={msg.id} className="text-sm text-gray-300">
-                {msg.message} - {new Date(msg.timestamp).toLocaleString()}
-              </div>
-            ))}
-        </div>
       </div>
     </div>
   );
@@ -9641,8 +9574,7 @@ const Administrator = () => {
               )}
             </div>
           </div>
-          {/* New Team and Private Messaging Sections */}
-          <TeamMessaging />
+          {/* Private Messaging Section */}
           <PrivateMessaging />
           {showSettings && (
             <AdminSettings onClose={() => setShowSettings(false)} />
