@@ -111,33 +111,33 @@ export const uploadFile = async (req, res) => {
     return new Promise((resolve, reject) => {
       let responseSent = false;
       
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder,
-          resource_type: 'auto', // Auto-detect file type
-        },
-        (error, result) => {
-          if (error) {
-            console.error('Cloudinary upload error:', error);
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: 'auto', // Auto-detect file type
+      },
+      (error, result) => {
+        if (error) {
+          console.error('Cloudinary upload error:', error);
             if (!responseSent && !res.headersSent) {
               responseSent = true;
               res.status(500).json({ 
                 message: 'File upload failed',
                 error: process.env.NODE_ENV === 'development' ? error.message : undefined
               });
-            }
+        }
             return reject(error);
           }
           
           if (!responseSent && !res.headersSent && result) {
             responseSent = true;
-            res.json({ url: result.secure_url });
+        res.json({ url: result.secure_url });
           }
           resolve(result);
-        }
-      );
+      }
+    );
 
-      // Pipe buffer to stream
+    // Pipe buffer to stream
       const readable = Readable.from(req.file.buffer);
       readable.pipe(stream);
       
