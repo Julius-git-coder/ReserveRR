@@ -5312,8 +5312,6 @@ const AdminSettings = ({ onClose }) => {
 const PrivateMessaging = () => {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [messageType, setMessageType] = useState("direct"); // 'direct' or 'broadcast' or 'all_students'
-  const [messageCategory, setMessageCategory] = useState("General"); // 'Announcement', 'Assignment', 'Project', 'Exercise', 'General'
   const [privateMessage, setPrivateMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -5339,44 +5337,27 @@ const PrivateMessaging = () => {
 
     loadStudents();
   }, []);
-  // Load messages when student is selected or message type changes
+  // Load messages when student is selected
   useEffect(() => {
     const loadMessages = async () => {
-      if (
-        messageType === "broadcast" ||
-        messageType === "all_students" ||
-        selectedStudent
-      ) {
-        try {
-          // For broadcast/all_students, load broadcast messages
-          // For direct, load direct messages with selected student
-          let data = [];
-          if (messageType === "broadcast" || messageType === "all_students") {
-            data = await messagesAPI.getTeamBroadcastMessages();
-          } else if (selectedStudent) {
-            data = await messagesAPI.getDirectMessages(
-              selectedStudent.id || selectedStudent._id
-            );
-          }
-          setMessages(data || []);
-        } catch (error) {
-          console.error("Error loading messages:", error);
-        }
+      if (!selectedStudent) return;
+      try {
+        const data = await messagesAPI.getDirectMessages(
+          selectedStudent.id || selectedStudent._id
+        );
+        setMessages(data || []);
+      } catch (error) {
+        console.error("Error loading messages:", error);
       }
     };
     loadMessages();
-  }, [selectedStudent, messageType]);
+  }, [selectedStudent]);
   // Listen for real-time messages via socket.io
   useEffect(() => {
     if (!socket || !isConnected) return;
     const handleNewMessage = (message) => {
-      if (messageType === "broadcast" || messageType === "all_students") {
-        // For broadcast/all_students, accept all broadcast messages (isTeamChat: false, receiverId: null)
-        if (!message.isTeamChat && !message.receiverId) {
-          setMessages((prev) => [...prev, message]);
-        }
-      } else if (selectedStudent) {
-        // For direct messages, only accept messages between admin and selected student
+      if (selectedStudent) {
+        // Only accept direct messages between admin and selected student
         const studentId = selectedStudent.id || selectedStudent._id;
         const adminId = currentUser.id || currentUser._id;
 
@@ -5420,29 +5401,19 @@ const PrivateMessaging = () => {
     return () => {
       socket.off("new_message", handleNewMessage);
     };
-  }, [socket, isConnected, selectedStudent, messageType, currentUser]);
+  }, [socket, isConnected, selectedStudent, currentUser]);
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!privateMessage.trim() || sending || !socket || !isConnected) return;
-    if (messageType === "broadcast" || messageType === "all_students") {
-      // Send broadcast to all students
-      if (currentUser.role !== "admin") {
-        alert("Only admins can send broadcasts");
-        return;
-      }
-    } else if (!selectedStudent) {
-      alert("Please select a student or choose 'ALL Students' for broadcast.");
+    if (!selectedStudent) {
+      alert("Please select a student to send a message.");
       return;
     }
     setSending(true);
     try {
       const messageData = {
-        receiverId:
-          messageType === "broadcast" || messageType === "all_students"
-            ? null
-            : selectedStudent.id || selectedStudent._id,
-        isTeamChat: false, // false for broadcast or direct, true for team chat
-        messageType: messageCategory, // Use message category (Announcement, Assignment, etc.)
+        receiverId: selectedStudent.id || selectedStudent._id,
+        isTeamChat: false,
         content: privateMessage.trim(),
         fileUrl: null,
       };
@@ -5460,112 +5431,49 @@ const PrivateMessaging = () => {
       <h2 className="text-white text-2xl font-bold mb-6">Messaging</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <h3 className="text-white font-semibold mb-4">Message Type</h3>
-
-          {/* Message Category Selector */}
-          <div className="mb-4">
-            <label className="block text-gray-400 text-sm mb-2">
-              Message Category
-            </label>
+          <h3 className="text-white font-semibold mb-4 mt-0">Select Student</h3>
+          {loading ? (
+            <div className="text-gray-400">Loading students...</div>
+          ) : (
             <select
-              value={messageCategory}
-              onChange={(e) => setMessageCategory(e.target.value)}
-              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 mb-4"
-            >
-              <option value="General">General</option>
-              <option value="Announcement">Announcement</option>
-              <option value="Assignment">Assignment</option>
-              <option value="Project">Project</option>
-              <option value="Exercise">Exercise</option>
-            </select>
-          </div>
-          {/* Recipient Type Selector */}
-          <div className="mb-4">
-            <label className="block text-gray-400 text-sm mb-2">
-              Recipient
-            </label>
-            <select
-              value={messageType}
+              value={
+                selectedStudent ? selectedStudent.id || selectedStudent._id : ""
+              }
               onChange={(e) => {
-                setMessageType(e.target.value);
-                if (e.target.value !== "direct") {
-                  setSelectedStudent(null);
-                }
+                const student = students.find(
+                  (s) => (s.id || s._id) === e.target.value
+                );
+                setSelectedStudent(student);
                 setMessages([]);
               }}
               className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
             >
-              <option value="all_students">ALL Students</option>
-              <option value="broadcast">Broadcast to All Students</option>
-              <option value="direct">Direct Message to Specific Student</option>
-            </select>
-          </div>
-
-          {messageType === "direct" && (
-            <>
-              <h3 className="text-white font-semibold mb-4 mt-4">
-                Select Student
-              </h3>
-              {loading ? (
-                <div className="text-gray-400">Loading students...</div>
-              ) : (
-                <select
-                  value={
-                    selectedStudent
-                      ? selectedStudent.id || selectedStudent._id
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const student = students.find(
-                      (s) => (s.id || s._id) === e.target.value
-                    );
-                    setSelectedStudent(student);
-                    setMessages([]);
-                  }}
-                  className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2"
+              <option value="">Choose a student by ID</option>
+              {students.map((student) => (
+                <option
+                  key={student.id || student._id}
+                  value={student.id || student._id}
                 >
-                  <option value="">Choose a student by ID</option>
-                  {students.map((student) => (
-                    <option
-                      key={student.id || student._id}
-                      value={student.id || student._id}
-                    >
-                      {student.studentId || "N/A"} - {student.name} (
-                      {student.email})
-                    </option>
-                  ))}
-                </select>
-              )}
-            </>
+                  {student.studentId || "N/A"} - {student.name} ({student.email})
+                </option>
+              ))}
+            </select>
           )}
         </div>
 
-        {(messageType === "broadcast" ||
-          messageType === "all_students" ||
-          selectedStudent) && (
+        {selectedStudent && (
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h3 className="text-white font-semibold mb-2">
-              {messageType === "broadcast" || messageType === "all_students"
-                ? `Send ${messageCategory} to ALL Students`
-                : `Send ${messageCategory} to ${selectedStudent.name}`}
-            </h3>
-            {messageType === "direct" && (
-              <p className="text-gray-400 text-sm mb-4">
-                Student ID: {selectedStudent.studentId || "N/A"} -{" "}
-                {selectedStudent.email}
-              </p>
-            )}
+            <h3 className="text-white font-semibold mb-2">Send message to {selectedStudent.name}</h3>
+            <p className="text-gray-400 text-sm mb-4">
+              Student ID: {selectedStudent.studentId || "N/A"} - {selectedStudent.email}
+            </p>
             <form onSubmit={handleSendMessage}>
               <div className="flex space-x-2 mb-4">
                 <input
                   type="text"
                   value={privateMessage}
                   onChange={(e) => setPrivateMessage(e.target.value)}
-                  placeholder={
-                    messageType === "broadcast"
-                      ? "Type broadcast message..."
-                      : "Send private message..."
-                  }
+                  placeholder="Send private message..."
                   disabled={!isConnected || sending}
                   className="flex-1 bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 disabled:opacity-50"
                 />
