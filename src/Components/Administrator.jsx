@@ -1319,6 +1319,7 @@ const Administrator = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [studentCount, setStudentCount] = useState(0);
   const [adminProfile, setAdminProfile] = useState(null);
+  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
   const [students, setStudents] = useState([]);
   const [studentsLoading, setStudentsLoading] = useState(true);
   const markAsRead = useManageStore((state) => state.markAsRead);
