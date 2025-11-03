@@ -6047,6 +6047,7 @@ const Administrator = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [studentCount, setStudentCount] = useState(0);
   const [adminProfile, setAdminProfile] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
   const [students, setStudents] = useState([]);
   const [studentsLoading, setStudentsLoading] = useState(true);
@@ -7072,94 +7073,30 @@ const Administrator = () => {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith("image/")) {
       alert("Please select a valid image file.");
-      e.target.value = "";
       return;
     }
-    // Check file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      alert("File size exceeds 10MB limit. Please choose a smaller image.");
-      e.target.value = "";
-      return;
-    }
-    try {
-      // Upload file to backend (which handles Cloudinary)
-      const { url } = await uploadsAPI.uploadFile(file);
 
-      if (!url) {
-        throw new Error("Upload succeeded but no URL returned");
-      }
+    setUploadingImage(true);
+    try {
+      // Upload file to backend
+      const { url } = await uploadsAPI.uploadFile(file);
 
       // Update user profile with the image URL
       const updatedUser = await usersAPI.updateProfile({ profileImage: url });
 
-      // Update local storage with new user data
-      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-      const updatedCurrentUser = {
-        ...currentUser,
-        ...updatedUser,
-        profileImage: url,
-      };
+      // Update local storage
+      const updatedCurrentUser = { ...currentUser, profileImage: url };
       localStorage.setItem("user", JSON.stringify(updatedCurrentUser));
 
-      // Also update the local store for immediate UI update
-      const currentUserId = currentUser.id || currentUser._id;
-      if (currentUserId) {
-        updateUser(currentUserId, { pictureUrl: url, profileImage: url });
-      }
-
-      // Update admin profile state immediately
-      const profileData = {
-        ...updatedUser,
-        pictureUrl: updatedUser.profileImage || url,
-        id: updatedUser.id || updatedUser._id,
-        _id: updatedUser.id || updatedUser._id,
-      };
-      setAdminProfile(profileData);
+      // Update state
+      setAdminProfile(updatedUser);
 
       alert("Profile picture updated successfully!");
     } catch (error) {
       console.error("Error uploading profile image:", error);
-
-      // Provide user-friendly error messages
-      let errorMessage = "Failed to upload image. Please try again.";
-
-      if (error.response) {
-        const status = error.response.status;
-        const data = error.response.data;
-
-        if (status === 500) {
-          if (
-            data?.message?.includes("Cloudinary") ||
-            data?.message?.includes("not configured")
-          ) {
-            errorMessage =
-              "File upload service is not configured. Please contact your system administrator to set up Cloudinary. Profile picture upload is temporarily unavailable.";
-          } else if (data?.message?.includes("team ID")) {
-            errorMessage =
-              "Your account is missing a Team ID. Please contact support to fix this issue.";
-          } else {
-            errorMessage =
-              data?.message ||
-              "Server error occurred. Please check your backend configuration.";
-          }
-        } else if (status === 400) {
-          errorMessage =
-            data?.message || "Invalid file or request. Please try again.";
-        } else if (status === 403) {
-          errorMessage =
-            data?.message || "You don't have permission to upload files.";
-        } else if (status === 401) {
-          errorMessage =
-            "Your session has expired. Please log out and log back in.";
-        } else {
-          errorMessage = data?.message || errorMessage;
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      alert(errorMessage);
+      alert("Failed to upload image. Please try again.");
     } finally {
+      setUploadingImage(false);
       e.target.value = "";
     }
   };
@@ -8096,11 +8033,17 @@ const Administrator = () => {
                 type="file"
                 accept="image/*"
                 onChange={handleAdminImageUpload}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-full"
+                disabled={uploadingImage}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-full disabled:cursor-not-allowed"
               />
               <div className="absolute inset-0 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                 <span className="text-white text-xs">Upload Photo</span>
               </div>
+              {uploadingImage && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full">
+                  <span className="text-yellow-500 text-xs">Uploading...</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
