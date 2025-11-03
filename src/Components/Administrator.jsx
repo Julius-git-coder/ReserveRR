@@ -5683,6 +5683,7 @@ const Administrator = () => {
   const [adminProfile, setAdminProfile] = useState(null);
   const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
   const [students, setStudents] = useState([]);
+  const [selectedDirectoryStudent, setSelectedDirectoryStudent] = useState(null);
   const [studentsLoading, setStudentsLoading] = useState(true);
   const markAsRead = useManageStore((state) => state.markAsRead);
   const { directory, conversations } = useManageStore();
@@ -5977,6 +5978,10 @@ const Administrator = () => {
         })),
     ],
     [assignments, exercises, projects, recentStudents]
+  );
+  const availableStudents = useMemo(
+    () => students.filter((s) => (s.status || "active") !== "suspended"),
+    [students]
   );
   // Filtered data for tabs
   const filteredAssignments = useMemo(
