@@ -6,13 +6,13 @@ export const uploadsAPI = {
     formData.append('file', file);
 
     try {
-      const response = await apiClient.post('/uploads', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+    const response = await apiClient.post('/uploads', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
 
-      return response.data;
+    return response.data;
     } catch (error) {
       // Re-throw with more context
       if (error.response) {

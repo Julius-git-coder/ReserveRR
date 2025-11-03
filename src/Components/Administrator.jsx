@@ -346,23 +346,27 @@ const AdminSettings = ({ onClose }) => {
       loadStudents();
     };
 
-    socket.on('team_member_updated', handleTeamMemberUpdate);
+    socket.on("team_member_updated", handleTeamMemberUpdate);
 
     return () => {
-      socket.off('team_member_updated', handleTeamMemberUpdate);
+      socket.off("team_member_updated", handleTeamMemberUpdate);
     };
   }, [socket, isConnected]);
 
   const handleDeleteStudent = async (studentId) => {
-    if (!confirm("Are you sure you want to delete this student? This action cannot be undone.")) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this student? This action cannot be undone."
+      )
+    ) {
       return;
     }
 
-    setActionLoading((prev) => ({ ...prev, [studentId]: 'delete' }));
+    setActionLoading((prev) => ({ ...prev, [studentId]: "delete" }));
     try {
       await usersAPI.deleteStudent(studentId);
       // Remove student from list
-      setStudents(students.filter(s => (s.id || s._id) !== studentId));
+      setStudents(students.filter((s) => (s.id || s._id) !== studentId));
       alert("Student deleted successfully!");
     } catch (error) {
       console.error("Error deleting student:", error);
@@ -373,22 +377,22 @@ const AdminSettings = ({ onClose }) => {
   };
 
   const handleSuspendStudent = async (studentId, currentStatus) => {
-    const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
-    const action = newStatus === 'suspended' ? 'suspend' : 'activate';
-    
+    const newStatus = currentStatus === "suspended" ? "active" : "suspended";
+    const action = newStatus === "suspended" ? "suspend" : "activate";
+
     if (!confirm(`Are you sure you want to ${action} this student?`)) {
       return;
     }
 
-    setActionLoading((prev) => ({ ...prev, [studentId]: 'suspend' }));
+    setActionLoading((prev) => ({ ...prev, [studentId]: "suspend" }));
     try {
       const response = await usersAPI.updateStudentStatus(studentId, newStatus);
       // Update student in list
-      setStudents(students.map(s => 
-        (s.id || s._id) === studentId 
-          ? { ...s, status: newStatus }
-          : s
-      ));
+      setStudents(
+        students.map((s) =>
+          (s.id || s._id) === studentId ? { ...s, status: newStatus } : s
+        )
+      );
       alert(response.message || `Student ${action}d successfully!`);
     } catch (error) {
       console.error("Error updating student status:", error);
@@ -401,13 +405,13 @@ const AdminSettings = ({ onClose }) => {
   return (
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black bg-opacity-50 transition-opacity z-40"
         onClick={onClose}
       />
-      
+
       {/* Side Modal */}
-      <div 
+      <div
         className="absolute right-0 top-0 bottom-0 bg-gray-800 w-full max-w-2xl h-full overflow-y-auto shadow-2xl transform transition-transform duration-300 ease-out z-50"
         onClick={(e) => e.stopPropagation()}
       >
@@ -429,10 +433,14 @@ const AdminSettings = ({ onClose }) => {
         {/* Content */}
         <div className="p-6">
           {loading ? (
-            <div className="text-gray-400 text-center py-8">Loading students...</div>
+            <div className="text-gray-400 text-center py-8">
+              Loading students...
+            </div>
           ) : students.length === 0 ? (
             <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
-              <p className="text-gray-400 text-center">No students in your team yet.</p>
+              <p className="text-gray-400 text-center">
+                No students in your team yet.
+              </p>
             </div>
           ) : (
             <div className="bg-gray-700 rounded-lg border border-gray-600 overflow-hidden">
@@ -440,47 +448,87 @@ const AdminSettings = ({ onClose }) => {
                 <table className="w-full">
                   <thead className="bg-gray-800">
                     <tr className="border-b border-gray-600">
-                      <th className="text-left text-gray-300 font-semibold p-3">Name</th>
-                      <th className="text-left text-gray-300 font-semibold p-3">Email</th>
-                      <th className="text-left text-gray-300 font-semibold p-3">Student ID</th>
-                      <th className="text-left text-gray-300 font-semibold p-3">Status</th>
-                      <th className="text-left text-gray-300 font-semibold p-3">Actions</th>
+                      <th className="text-left text-gray-300 font-semibold p-3">
+                        Name
+                      </th>
+                      <th className="text-left text-gray-300 font-semibold p-3">
+                        Email
+                      </th>
+                      <th className="text-left text-gray-300 font-semibold p-3">
+                        Student ID
+                      </th>
+                      <th className="text-left text-gray-300 font-semibold p-3">
+                        Status
+                      </th>
+                      <th className="text-left text-gray-300 font-semibold p-3">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {students.map((student) => (
-                      <tr key={student.id || student._id} className="border-b border-gray-600 hover:bg-gray-600 transition-colors">
+                      <tr
+                        key={student.id || student._id}
+                        className="border-b border-gray-600 hover:bg-gray-600 transition-colors"
+                      >
                         <td className="p-3 text-white">{student.name}</td>
                         <td className="p-3 text-gray-300">{student.email}</td>
-                        <td className="p-3 text-gray-300">{student.studentId || 'N/A'}</td>
+                        <td className="p-3 text-gray-300">
+                          {student.studentId || "N/A"}
+                        </td>
                         <td className="p-3">
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            student.status === 'suspended' 
-                              ? 'bg-red-500 bg-opacity-20 text-red-400' 
-                              : 'bg-green-500 bg-opacity-20 text-green-400'
-                          }`}>
-                            {student.status === 'suspended' ? 'Suspended' : 'Active'}
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-semibold ${
+                              student.status === "suspended"
+                                ? "bg-red-500 bg-opacity-20 text-red-400"
+                                : "bg-green-500 bg-opacity-20 text-green-400"
+                            }`}
+                          >
+                            {student.status === "suspended"
+                              ? "Suspended"
+                              : "Active"}
                           </span>
                         </td>
                         <td className="p-3">
                           <div className="flex items-center space-x-2">
                             <button
-                              onClick={() => handleSuspendStudent(student.id || student._id, student.status || 'active')}
-                              disabled={actionLoading[student.id || student._id] === 'suspend'}
+                              onClick={() =>
+                                handleSuspendStudent(
+                                  student.id || student._id,
+                                  student.status || "active"
+                                )
+                              }
+                              disabled={
+                                actionLoading[student.id || student._id] ===
+                                "suspend"
+                              }
                               className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
-                                student.status === 'suspended'
-                                  ? 'bg-green-600 hover:bg-green-700 text-white'
-                                  : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                                student.status === "suspended"
+                                  ? "bg-green-600 hover:bg-green-700 text-white"
+                                  : "bg-yellow-600 hover:bg-yellow-700 text-white"
                               } disabled:opacity-50 disabled:cursor-not-allowed`}
                             >
-                              {actionLoading[student.id || student._id] === 'suspend' ? 'Processing...' : student.status === 'suspended' ? 'Activate' : 'Suspend'}
+                              {actionLoading[student.id || student._id] ===
+                              "suspend"
+                                ? "Processing..."
+                                : student.status === "suspended"
+                                ? "Activate"
+                                : "Suspend"}
                             </button>
                             <button
-                              onClick={() => handleDeleteStudent(student.id || student._id)}
-                              disabled={actionLoading[student.id || student._id] === 'delete'}
+                              onClick={() =>
+                                handleDeleteStudent(student.id || student._id)
+                              }
+                              disabled={
+                                actionLoading[student.id || student._id] ===
+                                "delete"
+                              }
                               className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              {actionLoading[student.id || student._id] === 'delete' ? 'Deleting...' : 'Delete'}
+                              {actionLoading[student.id || student._id] ===
+                              "delete"
+                                ? "Deleting..."
+                                : "Delete"}
                             </button>
                           </div>
                         </td>
@@ -501,15 +549,15 @@ const AdminSettings = ({ onClose }) => {
 const PrivateMessaging = () => {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [messageType, setMessageType] = useState('direct'); // 'direct' or 'broadcast' or 'all_students'
-  const [messageCategory, setMessageCategory] = useState('General'); // 'Announcement', 'Assignment', 'Project', 'Exercise', 'General'
+  const [messageType, setMessageType] = useState("direct"); // 'direct' or 'broadcast' or 'all_students'
+  const [messageCategory, setMessageCategory] = useState("General"); // 'Announcement', 'Assignment', 'Project', 'Exercise', 'General'
   const [privateMessage, setPrivateMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
   const { socket, isConnected } = useSocket();
-  
+
   useEffect(() => {
     const loadStudents = async () => {
       try {
@@ -525,22 +573,28 @@ const PrivateMessaging = () => {
         setLoading(false);
       }
     };
-    
+
     loadStudents();
   }, []);
 
   // Load messages when student is selected or message type changes
   useEffect(() => {
     const loadMessages = async () => {
-      if (messageType === 'broadcast' || messageType === 'all_students' || selectedStudent) {
+      if (
+        messageType === "broadcast" ||
+        messageType === "all_students" ||
+        selectedStudent
+      ) {
         try {
           // For broadcast/all_students, load broadcast messages
           // For direct, load direct messages with selected student
           let data = [];
-          if (messageType === 'broadcast' || messageType === 'all_students') {
+          if (messageType === "broadcast" || messageType === "all_students") {
             data = await messagesAPI.getTeamBroadcastMessages();
           } else if (selectedStudent) {
-            data = await messagesAPI.getDirectMessages(selectedStudent.id || selectedStudent._id);
+            data = await messagesAPI.getDirectMessages(
+              selectedStudent.id || selectedStudent._id
+            );
           }
           setMessages(data || []);
         } catch (error) {
@@ -557,7 +611,29 @@ const PrivateMessaging = () => {
     if (!socket || !isConnected) return;
 
     const handleNewMessage = (message) => {
-      if (messageType === 'broadcast' || messageType === 'all_students') {
+      const adminId = currentUser.id || currentUser._id;
+      // Global: if this is a direct message to the admin, add a notification regardless of selected chat
+      try {
+        const isDirectToAdmin =
+          !message.isTeamChat &&
+          message.receiverId &&
+          message.receiverId?._id?.toString() === adminId?.toString();
+        const senderRole = message?.senderId?.role;
+        if (isDirectToAdmin && senderRole !== "admin") {
+          const addNotification = useManageStore.getState().addNotification;
+          addNotification({
+            id: Date.now(),
+            userId: adminId,
+            type: "message",
+            fromUserId: message?.senderId?._id?.toString(),
+            messageId: message?._id,
+            read: false,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      } catch (_) {}
+
+      if (messageType === "broadcast" || messageType === "all_students") {
         // For broadcast/all_students, accept all broadcast messages (isTeamChat: false, receiverId: null)
         if (!message.isTeamChat && !message.receiverId) {
           setMessages((prev) => [...prev, message]);
@@ -566,25 +642,49 @@ const PrivateMessaging = () => {
         // For direct messages, only accept messages between admin and selected student
         const studentId = selectedStudent.id || selectedStudent._id;
         const adminId = currentUser.id || currentUser._id;
-        
+
         const isDirectMessage = !message.isTeamChat && message.receiverId;
-        const isToOrFromSelected = 
-          (message.senderId?._id === studentId || message.senderId?._id?.toString() === studentId) ||
-          (message.receiverId?._id === studentId || message.receiverId?._id?.toString() === studentId);
+        const isToOrFromSelected =
+          message.senderId?._id === studentId ||
+          message.senderId?._id?.toString() === studentId ||
+          message.receiverId?._id === studentId ||
+          message.receiverId?._id?.toString() === studentId;
         const isFromOrToAdmin =
-          (message.senderId?._id === adminId || message.senderId?._id?.toString() === adminId) ||
-          (message.receiverId?._id === adminId || message.receiverId?._id?.toString() === adminId);
+          message.senderId?._id === adminId ||
+          message.senderId?._id?.toString() === adminId ||
+          message.receiverId?._id === adminId ||
+          message.receiverId?._id?.toString() === adminId;
 
         if (isDirectMessage && isToOrFromSelected && isFromOrToAdmin) {
           setMessages((prev) => [...prev, message]);
+          // If the admin is the receiver and the sender is a student, push a notification
+          try {
+            const senderRole = message?.senderId?.role;
+            const receiverIsAdmin =
+              message?.receiverId?._id?.toString() === adminId?.toString();
+            if (receiverIsAdmin && senderRole !== "admin") {
+              const addNotification = useManageStore.getState().addNotification;
+              addNotification({
+                id: Date.now(),
+                userId: adminId,
+                type: "message",
+                fromUserId: message?.senderId?._id?.toString(),
+                messageId: message?._id,
+                read: false,
+                timestamp: new Date().toISOString(),
+              });
+            }
+          } catch (e) {
+            // no-op
+          }
         }
       }
     };
 
-    socket.on('new_message', handleNewMessage);
+    socket.on("new_message", handleNewMessage);
 
     return () => {
-      socket.off('new_message', handleNewMessage);
+      socket.off("new_message", handleNewMessage);
     };
   }, [socket, isConnected, selectedStudent, messageType, currentUser]);
 
@@ -592,10 +692,10 @@ const PrivateMessaging = () => {
     e.preventDefault();
     if (!privateMessage.trim() || sending || !socket || !isConnected) return;
 
-    if (messageType === 'broadcast' || messageType === 'all_students') {
+    if (messageType === "broadcast" || messageType === "all_students") {
       // Send broadcast to all students
-      if (currentUser.role !== 'admin') {
-        alert('Only admins can send broadcasts');
+      if (currentUser.role !== "admin") {
+        alert("Only admins can send broadcasts");
         return;
       }
     } else if (!selectedStudent) {
@@ -606,18 +706,21 @@ const PrivateMessaging = () => {
     setSending(true);
     try {
       const messageData = {
-        receiverId: (messageType === 'broadcast' || messageType === 'all_students') ? null : (selectedStudent.id || selectedStudent._id),
+        receiverId:
+          messageType === "broadcast" || messageType === "all_students"
+            ? null
+            : selectedStudent.id || selectedStudent._id,
         isTeamChat: false, // false for broadcast or direct, true for team chat
         messageType: messageCategory, // Use message category (Announcement, Assignment, etc.)
         content: privateMessage.trim(),
         fileUrl: null,
       };
 
-      socket.emit('send_message', messageData);
+      socket.emit("send_message", messageData);
       setPrivateMessage("");
     } catch (error) {
-      console.error('Error sending message:', error);
-      alert('Failed to send message');
+      console.error("Error sending message:", error);
+      alert("Failed to send message");
     } finally {
       setSending(false);
     }
@@ -628,10 +731,12 @@ const PrivateMessaging = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <h3 className="text-white font-semibold mb-4">Message Type</h3>
-          
+
           {/* Message Category Selector */}
           <div className="mb-4">
-            <label className="block text-gray-400 text-sm mb-2">Message Category</label>
+            <label className="block text-gray-400 text-sm mb-2">
+              Message Category
+            </label>
             <select
               value={messageCategory}
               onChange={(e) => setMessageCategory(e.target.value)}
@@ -647,12 +752,14 @@ const PrivateMessaging = () => {
 
           {/* Recipient Type Selector */}
           <div className="mb-4">
-            <label className="block text-gray-400 text-sm mb-2">Recipient</label>
+            <label className="block text-gray-400 text-sm mb-2">
+              Recipient
+            </label>
             <select
               value={messageType}
               onChange={(e) => {
                 setMessageType(e.target.value);
-                if (e.target.value !== 'direct') {
+                if (e.target.value !== "direct") {
                   setSelectedStudent(null);
                 }
                 setMessages([]);
@@ -664,15 +771,21 @@ const PrivateMessaging = () => {
               <option value="direct">Direct Message to Specific Student</option>
             </select>
           </div>
-          
-          {messageType === 'direct' && (
+
+          {messageType === "direct" && (
             <>
-              <h3 className="text-white font-semibold mb-4 mt-4">Select Student</h3>
+              <h3 className="text-white font-semibold mb-4 mt-4">
+                Select Student
+              </h3>
               {loading ? (
                 <div className="text-gray-400">Loading students...</div>
               ) : (
                 <select
-                  value={selectedStudent ? (selectedStudent.id || selectedStudent._id) : ''}
+                  value={
+                    selectedStudent
+                      ? selectedStudent.id || selectedStudent._id
+                      : ""
+                  }
                   onChange={(e) => {
                     const student = students.find(
                       (s) => (s.id || s._id) === e.target.value
@@ -684,8 +797,12 @@ const PrivateMessaging = () => {
                 >
                   <option value="">Choose a student by ID</option>
                   {students.map((student) => (
-                    <option key={student.id || student._id} value={student.id || student._id}>
-                      {student.studentId || 'N/A'} - {student.name} ({student.email})
+                    <option
+                      key={student.id || student._id}
+                      value={student.id || student._id}
+                    >
+                      {student.studentId || "N/A"} - {student.name} (
+                      {student.email})
                     </option>
                   ))}
                 </select>
@@ -693,17 +810,20 @@ const PrivateMessaging = () => {
             </>
           )}
         </div>
-        
-        {(messageType === 'broadcast' || messageType === 'all_students' || selectedStudent) && (
+
+        {(messageType === "broadcast" ||
+          messageType === "all_students" ||
+          selectedStudent) && (
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h3 className="text-white font-semibold mb-2">
-              {messageType === 'broadcast' || messageType === 'all_students' 
-                ? `Send ${messageCategory} to ALL Students` 
+              {messageType === "broadcast" || messageType === "all_students"
+                ? `Send ${messageCategory} to ALL Students`
                 : `Send ${messageCategory} to ${selectedStudent.name}`}
             </h3>
-            {messageType === 'direct' && (
+            {messageType === "direct" && (
               <p className="text-gray-400 text-sm mb-4">
-                Student ID: {selectedStudent.studentId || 'N/A'} - {selectedStudent.email}
+                Student ID: {selectedStudent.studentId || "N/A"} -{" "}
+                {selectedStudent.email}
               </p>
             )}
             <form onSubmit={handleSendMessage}>
@@ -712,7 +832,11 @@ const PrivateMessaging = () => {
                   type="text"
                   value={privateMessage}
                   onChange={(e) => setPrivateMessage(e.target.value)}
-                  placeholder={messageType === 'broadcast' ? 'Type broadcast message...' : 'Send private message...'}
+                  placeholder={
+                    messageType === "broadcast"
+                      ? "Type broadcast message..."
+                      : "Send private message..."
+                  }
                   disabled={!isConnected || sending}
                   className="flex-1 bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 disabled:opacity-50"
                 />
@@ -721,7 +845,7 @@ const PrivateMessaging = () => {
                   disabled={!privateMessage.trim() || sending || !isConnected}
                   className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
                 >
-                  {sending ? 'Sending...' : 'Send'}
+                  {sending ? "Sending..." : "Send"}
                 </button>
               </div>
             </form>
@@ -738,11 +862,15 @@ const PrivateMessaging = () => {
                 </div>
               ))}
               {messages.length === 0 && (
-                <p className="text-gray-500 text-sm text-center py-4">No messages yet.</p>
+                <p className="text-gray-500 text-sm text-center py-4">
+                  No messages yet.
+                </p>
               )}
             </div>
             {!isConnected && (
-              <p className="text-yellow-500 text-xs mt-2">Connecting to server...</p>
+              <p className="text-yellow-500 text-xs mt-2">
+                Connecting to server...
+              </p>
             )}
           </div>
         )}
@@ -1195,7 +1323,7 @@ const Administrator = () => {
   const [studentsLoading, setStudentsLoading] = useState(true);
   const markAsRead = useManageStore((state) => state.markAsRead);
   const { directory, conversations } = useManageStore();
-  const userId = 2;
+  const userId = currentUser.id || currentUser._id;
   const markNotificationAsRead = useManageStore(
     (state) => state.markNotificationAsRead
   );
@@ -1235,10 +1363,10 @@ const Administrator = () => {
       loadStudents();
     };
 
-    socket.on('team_member_updated', handleTeamMemberUpdate);
+    socket.on("team_member_updated", handleTeamMemberUpdate);
 
     return () => {
-      socket.off('team_member_updated', handleTeamMemberUpdate);
+      socket.off("team_member_updated", handleTeamMemberUpdate);
     };
   }, [socket, isConnected, loadStudents]);
 
@@ -1257,7 +1385,7 @@ const Administrator = () => {
       };
       setAdminProfile(profileData);
       // Update localStorage with fresh data
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem("user", JSON.stringify(userData));
     } catch (error) {
       console.error("Error loading admin profile:", error);
       // Fallback to directory if API fails
@@ -1278,13 +1406,13 @@ const Administrator = () => {
 
     const handleProfileUpdate = (data) => {
       const updatedUser = data.user;
-      const localCurrentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      
+      const localCurrentUser = JSON.parse(localStorage.getItem("user") || "{}");
+
       // Update if it's the current admin user
       if (updatedUser.id === (localCurrentUser.id || localCurrentUser._id)) {
         const updatedCurrentUser = { ...localCurrentUser, ...updatedUser };
-        localStorage.setItem('user', JSON.stringify(updatedCurrentUser));
-        
+        localStorage.setItem("user", JSON.stringify(updatedCurrentUser));
+
         // Update admin profile with new data
         const updatedProfile = {
           ...updatedUser,
@@ -1301,12 +1429,12 @@ const Administrator = () => {
       loadAdminProfile();
     };
 
-    socket.on('profile_updated', handleProfileUpdate);
-    socket.on('team_member_updated', handleTeamMemberUpdate);
+    socket.on("profile_updated", handleProfileUpdate);
+    socket.on("team_member_updated", handleTeamMemberUpdate);
 
     return () => {
-      socket.off('profile_updated', handleProfileUpdate);
-      socket.off('team_member_updated', handleTeamMemberUpdate);
+      socket.off("profile_updated", handleProfileUpdate);
+      socket.off("team_member_updated", handleTeamMemberUpdate);
     };
   }, [socket, isConnected, loadAdminProfile]);
   const handleBellClick = () => {
@@ -1430,13 +1558,13 @@ const Administrator = () => {
     classMaterials.length,
     programs.length,
   ]);
-  const students = useMemo(
+  const studentsInDirectory = useMemo(
     () => directory.filter((u) => u.role === "Student"),
     [directory]
   );
   const recentStudents = useMemo(
     () =>
-      students.slice(0, 5).map((student) => ({
+      studentsInDirectory.slice(0, 5).map((student) => ({
         id: student.id,
         name: student.name,
         email: student.email,
@@ -1444,7 +1572,7 @@ const Administrator = () => {
         status: "active",
         attendance: student.attendance || 0,
       })),
-    [students]
+    [studentsInDirectory]
   );
   const stats = [
     {
@@ -1594,8 +1722,9 @@ const Administrator = () => {
           return;
         }
         const now = new Date();
-        const isGeneral = formData.recipientType === "general" || !formData.studentId;
-        
+        const isGeneral =
+          formData.recipientType === "general" || !formData.studentId;
+
         if (isGeneral) {
           // Create announcement for all students
           const newAnnouncement = {
@@ -1609,7 +1738,9 @@ const Administrator = () => {
             recipientType: "general",
           };
           addAnnouncement(newAnnouncement);
-          alert(`Announcement sent to all ${students.length} students successfully!`);
+          alert(
+            `Announcement sent to all ${students.length} students successfully!`
+          );
         } else {
           // Create announcement for specific student
           const newAnnouncement = {
@@ -1624,8 +1755,12 @@ const Administrator = () => {
             recipientType: "specific",
           };
           addAnnouncement(newAnnouncement);
-          const student = students.find(s => (s.id || s._id) === formData.studentId);
-          alert(`Announcement sent to ${student?.name || 'student'} successfully!`);
+          const student = students.find(
+            (s) => (s.id || s._id) === formData.studentId
+          );
+          alert(
+            `Announcement sent to ${student?.name || "student"} successfully!`
+          );
         }
         break;
       }
@@ -1685,8 +1820,9 @@ const Administrator = () => {
           return;
         }
         const now = new Date();
-        const isGeneral = formData.recipientType === "general" || !formData.studentId;
-        
+        const isGeneral =
+          formData.recipientType === "general" || !formData.studentId;
+
         if (isGeneral) {
           // Create assignment for all students
           let currentId = newId(assignments);
@@ -1704,7 +1840,9 @@ const Administrator = () => {
             };
             addAssignment(newAssignment);
           });
-          alert(`Assignment created for all ${students.length} students successfully!`);
+          alert(
+            `Assignment created for all ${students.length} students successfully!`
+          );
         } else {
           // Create assignment for specific student
           const newAssignment = {
@@ -1719,8 +1857,12 @@ const Administrator = () => {
             createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
           };
           addAssignment(newAssignment);
-          const student = students.find(s => (s.id || s._id) === formData.studentId);
-          alert(`Assignment created for ${student?.name || 'student'} successfully!`);
+          const student = students.find(
+            (s) => (s.id || s._id) === formData.studentId
+          );
+          alert(
+            `Assignment created for ${student?.name || "student"} successfully!`
+          );
         }
         break;
       }
@@ -1765,8 +1907,9 @@ const Administrator = () => {
           return;
         }
         const now = new Date();
-        const isGeneral = formData.recipientType === "general" || !formData.studentId;
-        
+        const isGeneral =
+          formData.recipientType === "general" || !formData.studentId;
+
         if (isGeneral) {
           // Create exercise for all students
           let currentId = newId(exercises);
@@ -1784,7 +1927,9 @@ const Administrator = () => {
             };
             addExercise(newExercise);
           });
-          alert(`Exercise created for all ${students.length} students successfully!`);
+          alert(
+            `Exercise created for all ${students.length} students successfully!`
+          );
         } else {
           // Create exercise for specific student
           const newExercise = {
@@ -1799,8 +1944,12 @@ const Administrator = () => {
             createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
           };
           addExercise(newExercise);
-          const student = students.find(s => (s.id || s._id) === formData.studentId);
-          alert(`Exercise created for ${student?.name || 'student'} successfully!`);
+          const student = students.find(
+            (s) => (s.id || s._id) === formData.studentId
+          );
+          alert(
+            `Exercise created for ${student?.name || "student"} successfully!`
+          );
         }
         break;
       }
@@ -1845,8 +1994,9 @@ const Administrator = () => {
           return;
         }
         const now = new Date();
-        const isGeneral = formData.recipientType === "general" || !formData.studentId;
-        
+        const isGeneral =
+          formData.recipientType === "general" || !formData.studentId;
+
         if (isGeneral) {
           // Create project for all students
           let currentId = newId(projects);
@@ -1864,7 +2014,9 @@ const Administrator = () => {
             };
             addProject(newProject);
           });
-          alert(`Project created for all ${students.length} students successfully!`);
+          alert(
+            `Project created for all ${students.length} students successfully!`
+          );
         } else {
           // Create project for specific student
           const newProject = {
@@ -1879,8 +2031,12 @@ const Administrator = () => {
             createdTime: now.toTimeString().split(" ")[0].slice(0, 5),
           };
           addProject(newProject);
-          const student = students.find(s => (s.id || s._id) === formData.studentId);
-          alert(`Project created for ${student?.name || 'student'} successfully!`);
+          const student = students.find(
+            (s) => (s.id || s._id) === formData.studentId
+          );
+          alert(
+            `Project created for ${student?.name || "student"} successfully!`
+          );
         }
         break;
       }
@@ -1919,8 +2075,9 @@ const Administrator = () => {
           alert("Please fill in all required fields.");
           return;
         }
-        const isGeneral = formData.recipientType === "general" || !formData.studentId;
-        
+        const isGeneral =
+          formData.recipientType === "general" || !formData.studentId;
+
         if (isGeneral) {
           // Create attendance record for all students
           let currentId = newId(attendance);
@@ -1934,7 +2091,9 @@ const Administrator = () => {
             };
             addAttendance(newAttendance);
           });
-          alert(`Attendance record created for all ${students.length} students successfully!`);
+          alert(
+            `Attendance record created for all ${students.length} students successfully!`
+          );
         } else {
           // Create attendance record for specific student
           const newAttendance = {
@@ -1945,8 +2104,14 @@ const Administrator = () => {
             studentId: parseInt(formData.studentId),
           };
           addAttendance(newAttendance);
-          const student = students.find(s => (s.id || s._id) === formData.studentId);
-          alert(`Attendance record created for ${student?.name || 'student'} successfully!`);
+          const student = students.find(
+            (s) => (s.id || s._id) === formData.studentId
+          );
+          alert(
+            `Attendance record created for ${
+              student?.name || "student"
+            } successfully!`
+          );
         }
         break;
       }
@@ -2199,25 +2364,29 @@ const Administrator = () => {
     try {
       // Upload file to backend (which handles Cloudinary)
       const { url } = await uploadsAPI.uploadFile(file);
-      
+
       if (!url) {
         throw new Error("Upload succeeded but no URL returned");
       }
-      
+
       // Update user profile with the image URL
       const updatedUser = await usersAPI.updateProfile({ profileImage: url });
-      
+
       // Update local storage with new user data
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const updatedCurrentUser = { ...currentUser, ...updatedUser, profileImage: url };
-      localStorage.setItem('user', JSON.stringify(updatedCurrentUser));
-      
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const updatedCurrentUser = {
+        ...currentUser,
+        ...updatedUser,
+        profileImage: url,
+      };
+      localStorage.setItem("user", JSON.stringify(updatedCurrentUser));
+
       // Also update the local store for immediate UI update
       const currentUserId = currentUser.id || currentUser._id;
       if (currentUserId) {
         updateUser(currentUserId, { pictureUrl: url, profileImage: url });
       }
-      
+
       // Update admin profile state immediately
       const profileData = {
         ...updatedUser,
@@ -2226,39 +2395,49 @@ const Administrator = () => {
         _id: updatedUser.id || updatedUser._id,
       };
       setAdminProfile(profileData);
-      
+
       alert("Profile picture updated successfully!");
     } catch (error) {
       console.error("Error uploading profile image:", error);
-      
+
       // Provide user-friendly error messages
       let errorMessage = "Failed to upload image. Please try again.";
-      
+
       if (error.response) {
         const status = error.response.status;
         const data = error.response.data;
-        
+
         if (status === 500) {
-          if (data?.message?.includes("Cloudinary") || data?.message?.includes("not configured")) {
-            errorMessage = "File upload service is not configured. Please contact your system administrator to set up Cloudinary. Profile picture upload is temporarily unavailable.";
+          if (
+            data?.message?.includes("Cloudinary") ||
+            data?.message?.includes("not configured")
+          ) {
+            errorMessage =
+              "File upload service is not configured. Please contact your system administrator to set up Cloudinary. Profile picture upload is temporarily unavailable.";
           } else if (data?.message?.includes("team ID")) {
-            errorMessage = "Your account is missing a Team ID. Please contact support to fix this issue.";
+            errorMessage =
+              "Your account is missing a Team ID. Please contact support to fix this issue.";
           } else {
-            errorMessage = data?.message || "Server error occurred. Please check your backend configuration.";
+            errorMessage =
+              data?.message ||
+              "Server error occurred. Please check your backend configuration.";
           }
         } else if (status === 400) {
-          errorMessage = data?.message || "Invalid file or request. Please try again.";
+          errorMessage =
+            data?.message || "Invalid file or request. Please try again.";
         } else if (status === 403) {
-          errorMessage = data?.message || "You don't have permission to upload files.";
+          errorMessage =
+            data?.message || "You don't have permission to upload files.";
         } else if (status === 401) {
-          errorMessage = "Your session has expired. Please log out and log back in.";
+          errorMessage =
+            "Your session has expired. Please log out and log back in.";
         } else {
           errorMessage = data?.message || errorMessage;
         }
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       alert(errorMessage);
     } finally {
       e.target.value = "";
@@ -2285,9 +2464,13 @@ const Administrator = () => {
   };
   // Student Selection Component - Reusable dropdown with General option
   const renderStudentSelection = (isRequired = true, showLabel = true) => {
-    const isGeneral = formData.recipientType === "general" || (!formData.studentId && !formData.recipientType);
-    const selectedValue = isGeneral ? "general" : (formData.studentId || formData.recipientType || "general");
-    
+    const isGeneral =
+      formData.recipientType === "general" ||
+      (!formData.studentId && !formData.recipientType);
+    const selectedValue = isGeneral
+      ? "general"
+      : formData.studentId || formData.recipientType || "general";
+
     return (
       <div className="space-y-2">
         {showLabel && (
@@ -2319,18 +2502,20 @@ const Administrator = () => {
             <option disabled>No students available</option>
           ) : (
             students.map((student) => (
-              <option 
-                key={student.id || student._id} 
+              <option
+                key={student.id || student._id}
                 value={student.id || student._id}
               >
-                {student.name} (ID: {student.studentId || student.id || student._id})
+                {student.name} (ID:{" "}
+                {student.studentId || student.id || student._id})
               </option>
             ))
           )}
         </select>
         {isGeneral && students.length > 0 && (
           <p className="text-gray-500 text-xs">
-            This content will be sent to all {students.length} students in your team
+            This content will be sent to all {students.length} students in your
+            team
           </p>
         )}
       </div>
@@ -3239,9 +3424,13 @@ const Administrator = () => {
               <option value="program">New Program</option>
               <option value="milestone">New Milestone</option>
             </select>
-            <button 
+            <button
               onClick={() => setShowSettings(!showSettings)}
-              className={`${showSettings ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900' : 'bg-gray-800 hover:bg-gray-700 text-white'} px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2 font-semibold`}
+              className={`${
+                showSettings
+                  ? "bg-yellow-500 hover:bg-yellow-600 text-gray-900"
+                  : "bg-gray-800 hover:bg-gray-700 text-white"
+              } px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center space-x-2 font-semibold`}
             >
               <Settings className="w-4 h-4" />
               <span>Settings</span>
@@ -4889,7 +5078,9 @@ const Administrator = () => {
           {/* New Team and Private Messaging Sections */}
           <TeamMessaging />
           <PrivateMessaging />
-          {showSettings && <AdminSettings onClose={() => setShowSettings(false)} />}
+          {showSettings && (
+            <AdminSettings onClose={() => setShowSettings(false)} />
+          )}
           {isChatOpen && selectedUser && (
             <ChatModal
               onClose={() => setIsChatOpen(false)}
