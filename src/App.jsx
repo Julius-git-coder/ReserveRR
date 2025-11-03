@@ -1245,6 +1245,18 @@ const Dashboard = () => {
     };
   }, [socket, isConnected, currentUser, addNotification]);
 
+  // Listen for notification-driven tab open events (must be before any early returns)
+  useEffect(() => {
+    const handler = (e) => {
+      const tab = e.detail;
+      if (typeof tab === 'string') {
+        setActiveTab(tab);
+      }
+    };
+    window.addEventListener('open-tab', handler);
+    return () => window.removeEventListener('open-tab', handler);
+  }, []);
+
   // Listen for real-time profile updates via socket.io
   useEffect(() => {
     if (!socket || !isConnected || !loadData) return;
@@ -1353,17 +1365,6 @@ const Dashboard = () => {
     }
   };
   
-  // Listen for notification-driven tab open events
-  useEffect(() => {
-    const handler = (e) => {
-      const tab = e.detail;
-      if (typeof tab === 'string') {
-        setActiveTab(tab);
-      }
-    };
-    window.addEventListener('open-tab', handler);
-    return () => window.removeEventListener('open-tab', handler);
-  }, []);
   return (
     <div className="flex h-screen bg-gray-900">
       {isMobileMenuOpen && (
