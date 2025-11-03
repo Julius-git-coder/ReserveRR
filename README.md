@@ -108,3 +108,19 @@ Frontend/
 <!-- in admin dashboard fix the student directory so that only the currently available student appears there  -->
 <!-- fix so that when the student send anything to the admin the admin can see it and also notified -->
  <!-- in the student mangement modal fix so that each user have  their respective profile   -->
+
+
+
+
+ Personal Notes
+ -Controllers are  folders  where all activities such as what we want the app to do or behave(basically functionalities)
+
+ -Models folders are basically how we want users to be structured in the database thus maybe you are working with Bank App then  expecting to have something like (Bank->Accounts)
+          |
+          V
+Shows All users Accounts.
+
+Config folder is basically where you have you db.js(MongoDb) file, Cloudinary file etc 
+
+
+Middleware(betweener) folder checks what is the incoming request and the outgoing responds meets certain requirement before tasks are carried finally, approve to continue at both ends. 
